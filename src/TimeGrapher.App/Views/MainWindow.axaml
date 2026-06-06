@@ -3,114 +3,138 @@
         x:Class="TimeGrapher.App.Views.MainWindow"
         Title="TimeGrapher"
         Width="1280" Height="750"
-        MinWidth="1000" MinHeight="650">
+        MinWidth="900" MinHeight="560">
   <DockPanel>
     <Border DockPanel.Dock="Bottom" Height="24" Background="#F0F0F0" BorderBrush="#C0C0C0" BorderThickness="0,1,0,0">
       <TextBlock Name="StatusBarText" VerticalAlignment="Center" Margin="6,0,0,0" Text="" />
     </Border>
 
-    <Grid ColumnDefinitions="242,*" RowDefinitions="30,*">
-      <Canvas Grid.Column="0" Grid.RowSpan="2" Width="242">
-        <Border Canvas.Left="0" Canvas.Top="0" Width="242" Height="251"
-                BorderBrush="#808080" BorderThickness="1" Background="Transparent">
-          <Canvas>
-            <TextBlock Name="RunParamLabel" Canvas.Left="0" Canvas.Top="0" Width="241" Height="20"
-                       FontSize="14" FontWeight="Bold" TextDecorations="Underline"
-                       TextAlignment="Center" Text="Run Parameters" />
-            <TextBlock Name="GainLabel" Canvas.Left="10" Canvas.Top="30" Width="41" Height="20"
-                       FontWeight="Bold" Text="Gain" />
-            <Slider Name="MicrophoneHorizontalSlider" Canvas.Left="70" Canvas.Top="30" Width="161" Height="20"
-                    Minimum="0" Maximum="1000" Value="100" Orientation="Horizontal" />
-            <ComboBox Name="InputDeviceComboBox" Canvas.Left="10" Canvas.Top="60" Width="221" Height="22"
-                      FontWeight="Bold" />
-            <Button Name="RefreshPushButton" Canvas.Left="10" Canvas.Top="90" Width="70" Height="21"
-                    FontWeight="Bold" Content="Refresh" />
-            <TextBlock Name="SampleRateLabel" Canvas.Left="10" Canvas.Top="120" Width="91" Height="22"
-                       FontWeight="Bold" Text="Sample Rate" />
-            <ComboBox Name="SampleRatesComboBox" Canvas.Left="100" Canvas.Top="120" Width="131" Height="22"
-                      FontWeight="Bold" />
-            <TextBlock Name="ModeLabel" Canvas.Left="10" Canvas.Top="150" Width="91" Height="22"
-                       FontWeight="Bold" Text="Mode" />
-            <ComboBox Name="ModeComboBox" Canvas.Left="100" Canvas.Top="150" Width="131" Height="22"
-                      FontWeight="Bold" />
-            <TextBlock Name="AveragingPeriodLabel" Canvas.Left="10" Canvas.Top="180" Width="141" Height="22"
-                       FontSize="13" FontWeight="Bold" Text="Averaging Period" />
-            <ComboBox Name="AveragingPeriodComboBox" Canvas.Left="160" Canvas.Top="180" Width="71" Height="22"
-                      FontSize="13" FontWeight="Bold" />
-            <Button Name="StartPushButton" Canvas.Left="10" Canvas.Top="210" Width="61" Height="21"
-                    FontWeight="Bold" Content="Start" />
-            <Button Name="StopPushButton" Canvas.Left="170" Canvas.Top="210" Width="61" Height="21"
-                    FontWeight="Bold" Content="Stop" />
-          </Canvas>
-        </Border>
+    <Grid ColumnDefinitions="300,*" RowDefinitions="30,*">
+      <ScrollViewer Grid.Column="0" Grid.RowSpan="2"
+                    HorizontalScrollBarVisibility="Disabled"
+                    VerticalScrollBarVisibility="Auto"
+                    Background="#FAFAFA">
+        <StackPanel Margin="8" Spacing="8">
+          <Border BorderBrush="#808080" BorderThickness="1" Background="Transparent" Padding="8">
+            <StackPanel Spacing="8">
+              <TextBlock Name="RunParamLabel"
+                         FontSize="14" FontWeight="Bold" TextDecorations="Underline"
+                         TextAlignment="Center" Text="Run Parameters" />
+              <Grid ColumnDefinitions="112,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="7" ColumnSpacing="8">
+                <TextBlock Name="GainLabel" Grid.Row="0" Grid.Column="0"
+                           VerticalAlignment="Center" FontWeight="Bold" Text="Gain" />
+                <Slider Name="MicrophoneHorizontalSlider" Grid.Row="0" Grid.Column="1"
+                        Minimum="0" Maximum="1000" Value="100" Orientation="Horizontal" />
 
-        <Border Canvas.Left="0" Canvas.Top="250" Width="242" Height="101"
-                BorderBrush="#808080" BorderThickness="1" Background="Transparent">
-          <Canvas>
-            <TextBlock Name="WatchParamLabel" Canvas.Left="0" Canvas.Top="0" Width="241" Height="20"
-                       FontSize="14" FontWeight="Bold" TextDecorations="Underline"
-                       TextAlignment="Center" Text="Watch Parameters" />
-            <TextBlock Name="WatchBphLabel" Canvas.Left="10" Canvas.Top="30" Width="41" Height="22"
-                       FontWeight="Bold" Text="BPH" />
-            <ComboBox Name="BPHComboBox" Canvas.Left="120" Canvas.Top="30" Width="111" Height="22"
-                      FontWeight="Bold" />
-            <TextBlock Name="LiftAngleLabel" Canvas.Left="10" Canvas.Top="60" Width="71" Height="22"
-                       FontSize="12" FontWeight="Bold" Text="Lift Angle" />
-            <NumericUpDown Name="LiftAngleSpinBox" Canvas.Left="120" Canvas.Top="60" Width="111" Height="22"
-                           FontSize="13" FontWeight="Bold" FormatString="0'°'"
-                           Minimum="30" Maximum="70" Increment="1" Value="30" />
-          </Canvas>
-        </Border>
+                <ComboBox Name="InputDeviceComboBox" Grid.Row="1" Grid.ColumnSpan="2"
+                          FontWeight="Bold" />
 
-        <Border Canvas.Left="0" Canvas.Top="350" Width="242" Height="181"
-                BorderBrush="#808080" BorderThickness="1" Background="Transparent">
-          <Canvas>
-            <TextBlock Name="SimParamLabel" Canvas.Left="0" Canvas.Top="0" Width="241" Height="20"
-                       FontSize="14" FontWeight="Bold" TextDecorations="Underline"
-                       TextAlignment="Center" Text="Simulation Parameters" />
-            <TextBlock Name="SimBphLabel" Canvas.Left="10" Canvas.Top="30" Width="71" Height="22"
-                       FontWeight="Bold" Text="BPH" />
-            <ComboBox Name="SimBPHComboBox" Canvas.Left="119" Canvas.Top="30" Width="111" Height="22"
-                      FontWeight="Bold" />
-            <TextBlock Name="SimErrorRateLabel" Canvas.Left="10" Canvas.Top="60" Width="71" Height="22"
-                       FontWeight="Bold" Text="Error Rate" />
-            <NumericUpDown Name="SimErrorRateSpinBox" Canvas.Left="119" Canvas.Top="60" Width="111" Height="22"
-                           FontSize="13" FontWeight="Bold" FormatString="0' s/d'"
-                           Minimum="-999" Maximum="999" Increment="1" Value="0" />
-            <TextBlock Name="SimAmpLabel" Canvas.Left="10" Canvas.Top="90" Width="91" Height="22"
-                       FontWeight="Bold" Text="Amplitude" />
-            <NumericUpDown Name="SimAmplitudeSpinBox" Canvas.Left="119" Canvas.Top="90" Width="111" Height="22"
-                           FontSize="13" FontWeight="Bold" FormatString="0'°'"
-                           Minimum="100" Maximum="360" Increment="1" Value="300" />
-            <TextBlock Name="SimBeatErrorLabel" Canvas.Left="10" Canvas.Top="120" Width="91" Height="22"
-                       FontWeight="Bold" Text="Beat Error" />
-            <NumericUpDown Name="SimBeatErrorSpinBox" Canvas.Left="119" Canvas.Top="120" Width="111" Height="22"
-                           FontWeight="Bold" FormatString="0.0' ms'"
-                           Minimum="-10" Maximum="10" Increment="0.1" Value="0" />
-            <CheckBox Name="RealisticCheckBox" Canvas.Left="10" Canvas.Top="150" Width="91" Height="16"
-                      FontWeight="Bold" Content="Realistic" IsChecked="True" />
-          </Canvas>
-        </Border>
+                <Button Name="RefreshPushButton" Grid.Row="2" Grid.Column="0"
+                        MinWidth="72" FontWeight="Bold" Content="Refresh" />
 
-        <Border Canvas.Left="0" Canvas.Top="530" Width="242" Height="181"
-                BorderBrush="#808080" BorderThickness="1" Background="Transparent">
-          <Canvas>
-            <TextBlock Name="MiscLabel" Canvas.Left="0" Canvas.Top="0" Width="251" Height="20"
-                       FontSize="14" FontWeight="Bold" TextDecorations="Underline"
-                       TextAlignment="Center" Text="Misc. Parameters" />
-            <TextBlock Name="HighPassLabel" Canvas.Left="10" Canvas.Top="30" Width="121" Height="20"
-                       FontWeight="Bold" Text="High Pass Cutoff" />
-            <TextBox Name="HighLineEdit" Canvas.Left="160" Canvas.Top="30" Width="61" Height="20"
-                     Text="200" />
-            <TextBlock Name="ScopeScaleLabel" Canvas.Left="10" Canvas.Top="60" Width="101" Height="22"
-                       FontWeight="Bold" Text="Scope Scale" />
-            <NumericUpDown Name="ScopeScaleSpinBox" Canvas.Left="160" Canvas.Top="60" Width="61" Height="22"
-                           Minimum="1" Maximum="8" Increment="1" Value="2" />
-            <CheckBox Name="UseConsetCheckBox" Canvas.Left="10" Canvas.Top="90" Width="231" Height="22"
-                      FontWeight="Bold" Content="C Event Use Onset Amplitude" />
-          </Canvas>
-        </Border>
-      </Canvas>
+                <TextBlock Name="SampleRateLabel" Grid.Row="3" Grid.Column="0"
+                           VerticalAlignment="Center" FontWeight="Bold" Text="Sample Rate" />
+                <ComboBox Name="SampleRatesComboBox" Grid.Row="3" Grid.Column="1"
+                          FontWeight="Bold" />
+
+                <TextBlock Name="ModeLabel" Grid.Row="4" Grid.Column="0"
+                           VerticalAlignment="Center" FontWeight="Bold" Text="Mode" />
+                <ComboBox Name="ModeComboBox" Grid.Row="4" Grid.Column="1"
+                          FontWeight="Bold" />
+
+                <TextBlock Name="AveragingPeriodLabel" Grid.Row="5" Grid.Column="0"
+                           VerticalAlignment="Center" FontSize="13" FontWeight="Bold" Text="Averaging Period" />
+                <ComboBox Name="AveragingPeriodComboBox" Grid.Row="5" Grid.Column="1"
+                          FontSize="13" FontWeight="Bold" />
+              </Grid>
+
+              <Grid ColumnDefinitions="Auto,*,Auto">
+                <Button Name="StartPushButton" Grid.Column="0"
+                        MinWidth="72" FontWeight="Bold" Content="Start" />
+                <Button Name="StopPushButton" Grid.Column="2"
+                        MinWidth="72" FontWeight="Bold" Content="Stop" />
+              </Grid>
+            </StackPanel>
+          </Border>
+
+          <Border BorderBrush="#808080" BorderThickness="1" Background="Transparent" Padding="8">
+            <StackPanel Spacing="8">
+              <TextBlock Name="WatchParamLabel"
+                         FontSize="14" FontWeight="Bold" TextDecorations="Underline"
+                         TextAlignment="Center" Text="Watch Parameters" />
+              <Grid ColumnDefinitions="106,*" RowDefinitions="Auto,Auto" RowSpacing="7" ColumnSpacing="8">
+                <TextBlock Name="WatchBphLabel" Grid.Row="0" Grid.Column="0"
+                           VerticalAlignment="Center" FontWeight="Bold" Text="BPH" />
+                <ComboBox Name="BPHComboBox" Grid.Row="0" Grid.Column="1"
+                          FontWeight="Bold" />
+
+                <TextBlock Name="LiftAngleLabel" Grid.Row="1" Grid.Column="0"
+                           VerticalAlignment="Center" FontSize="12" FontWeight="Bold" Text="Lift Angle" />
+                <NumericUpDown Name="LiftAngleSpinBox" Grid.Row="1" Grid.Column="1"
+                               FontSize="13" FontWeight="Bold" FormatString="0'°'"
+                               Minimum="30" Maximum="70" Increment="1" Value="30" />
+              </Grid>
+            </StackPanel>
+          </Border>
+
+          <Border BorderBrush="#808080" BorderThickness="1" Background="Transparent" Padding="8">
+            <StackPanel Spacing="8">
+              <TextBlock Name="SimParamLabel"
+                         FontSize="14" FontWeight="Bold" TextDecorations="Underline"
+                         TextAlignment="Center" Text="Simulation Parameters" />
+              <Grid ColumnDefinitions="106,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="7" ColumnSpacing="8">
+                <TextBlock Name="SimBphLabel" Grid.Row="0" Grid.Column="0"
+                           VerticalAlignment="Center" FontWeight="Bold" Text="BPH" />
+                <ComboBox Name="SimBPHComboBox" Grid.Row="0" Grid.Column="1"
+                          FontWeight="Bold" />
+
+                <TextBlock Name="SimErrorRateLabel" Grid.Row="1" Grid.Column="0"
+                           VerticalAlignment="Center" FontWeight="Bold" Text="Error Rate" />
+                <NumericUpDown Name="SimErrorRateSpinBox" Grid.Row="1" Grid.Column="1"
+                               FontSize="13" FontWeight="Bold" FormatString="0' s/d'"
+                               Minimum="-999" Maximum="999" Increment="1" Value="0" />
+
+                <TextBlock Name="SimAmpLabel" Grid.Row="2" Grid.Column="0"
+                           VerticalAlignment="Center" FontWeight="Bold" Text="Amplitude" />
+                <NumericUpDown Name="SimAmplitudeSpinBox" Grid.Row="2" Grid.Column="1"
+                               FontSize="13" FontWeight="Bold" FormatString="0'°'"
+                               Minimum="100" Maximum="360" Increment="1" Value="300" />
+
+                <TextBlock Name="SimBeatErrorLabel" Grid.Row="3" Grid.Column="0"
+                           VerticalAlignment="Center" FontWeight="Bold" Text="Beat Error" />
+                <NumericUpDown Name="SimBeatErrorSpinBox" Grid.Row="3" Grid.Column="1"
+                               FontWeight="Bold" FormatString="0.0' ms'"
+                               Minimum="-10" Maximum="10" Increment="0.1" Value="0" />
+
+                <CheckBox Name="RealisticCheckBox" Grid.Row="4" Grid.ColumnSpan="2"
+                          FontWeight="Bold" Content="Realistic" IsChecked="True" />
+              </Grid>
+            </StackPanel>
+          </Border>
+
+          <Border BorderBrush="#808080" BorderThickness="1" Background="Transparent" Padding="8">
+            <StackPanel Spacing="8">
+              <TextBlock Name="MiscLabel"
+                         FontSize="14" FontWeight="Bold" TextDecorations="Underline"
+                         TextAlignment="Center" Text="Misc. Parameters" />
+              <Grid ColumnDefinitions="132,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="7" ColumnSpacing="8">
+                <TextBlock Name="HighPassLabel" Grid.Row="0" Grid.Column="0"
+                           VerticalAlignment="Center" FontWeight="Bold" Text="High Pass Cutoff" />
+                <TextBox Name="HighLineEdit" Grid.Row="0" Grid.Column="1"
+                         Text="200" />
+
+                <TextBlock Name="ScopeScaleLabel" Grid.Row="1" Grid.Column="0"
+                           VerticalAlignment="Center" FontWeight="Bold" Text="Scope Scale" />
+                <NumericUpDown Name="ScopeScaleSpinBox" Grid.Row="1" Grid.Column="1"
+                               Minimum="1" Maximum="8" Increment="1" Value="2" />
+
+                <CheckBox Name="UseConsetCheckBox" Grid.Row="2" Grid.ColumnSpan="2"
+                          FontWeight="Bold" Content="C Event Use Onset Amplitude" />
+              </Grid>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+      </ScrollViewer>
 
       <TextBlock Name="Results" Grid.Column="1" Grid.Row="0" Margin="8,0,10,0"
                  FontSize="16" FontWeight="Bold" TextAlignment="Center"

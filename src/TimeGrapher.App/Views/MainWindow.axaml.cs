@@ -256,7 +256,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        // Windows path (Q_OS_WIN). LinuxAudio is not ported yet.
+        // Windows endpoint volume helper. Linux/Pi capture uses the live audio backend.
         SystemAudioControl.SetSoundParameters(WINDOWS_SOUND_ENDPOINT_NAME, WINDOWS_SOUND_MIC_NAME, WINDOWS_SOUND_MIC_PERCENT_VOLUME);
     }
 
