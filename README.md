@@ -25,6 +25,16 @@ Pi GUI 실행에는 XWayland/Avalonia 의존성(`libx11-6`, `libice6`, `libsm6`,
 `pw-record` raw float mono stream을 분석 pipeline에 공급한다. capture source가 없으면 UI는
 `Playback/Sim`만 표시한다.
 
+Pi에서 화면 없이 audio 상태를 확인할 때:
+
+```bash
+./TimeGrapher.App --audio-smoke
+./TimeGrapher.App --capture-smoke --duration-ms=1500
+```
+
+`--audio-smoke`는 PipeWire capture source 목록만 출력한다. `--capture-smoke`는 첫 source를
+짧게 열고 `samples_written`을 출력하며, source가 없으면 exit code 2를 반환한다.
+
 ## 프로젝트 구성
 
 | 프로젝트 | 내용 |

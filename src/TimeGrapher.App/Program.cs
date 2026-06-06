@@ -1,4 +1,5 @@
 using Avalonia;
+using TimeGrapher.App.Audio;
 using TimeGrapher.Core.Shared;
 
 namespace TimeGrapher.App;
@@ -6,17 +7,27 @@ namespace TimeGrapher.App;
 internal static class Program
 {
     [STAThread]
-    public static void Main(string[] args)
+    public static int Main(string[] args)
     {
         if (args.Contains("--smoke", StringComparer.Ordinal))
         {
             _ = BuildAvaloniaApp();
             _ = typeof(AnalysisFrame).Assembly.FullName;
             Console.WriteLine("TimeGrapher.App smoke OK");
-            return;
+            return 0;
         }
 
-        BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+        if (args.Contains("--audio-smoke", StringComparer.Ordinal))
+        {
+            return AudioSmokeRunner.Run(args, capture: false);
+        }
+
+        if (args.Contains("--capture-smoke", StringComparer.Ordinal))
+        {
+            return AudioSmokeRunner.Run(args, capture: true);
+        }
+
+        return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
 
     public static AppBuilder BuildAvaloniaApp()

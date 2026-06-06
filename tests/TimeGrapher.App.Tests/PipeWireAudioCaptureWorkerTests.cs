@@ -55,4 +55,37 @@ Audio
 
         Assert.Empty(devices);
     }
+
+    [Fact]
+    public void AudioSmokeRunner_ParsePositiveOptionReadsSeparateAndInlineValues()
+    {
+        Assert.Equal(96000, AudioSmokeRunner.ParsePositiveOption(
+            new[] { "--capture-smoke", "--rate", "96000" },
+            "--rate",
+            48000));
+
+        Assert.Equal(2500, AudioSmokeRunner.ParsePositiveOption(
+            new[] { "--capture-smoke", "--duration-ms=2500" },
+            "--duration-ms",
+            1500));
+    }
+
+    [Fact]
+    public void AudioSmokeRunner_ParsePositiveOptionFallsBackForMissingOrInvalidValues()
+    {
+        Assert.Equal(48000, AudioSmokeRunner.ParsePositiveOption(
+            new[] { "--capture-smoke", "--rate" },
+            "--rate",
+            48000));
+
+        Assert.Equal(48000, AudioSmokeRunner.ParsePositiveOption(
+            new[] { "--capture-smoke", "--rate", "0" },
+            "--rate",
+            48000));
+
+        Assert.Equal(48000, AudioSmokeRunner.ParsePositiveOption(
+            new[] { "--capture-smoke", "--rate=abc" },
+            "--rate",
+            48000));
+    }
 }
