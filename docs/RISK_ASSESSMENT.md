@@ -4,11 +4,11 @@
 
 ---
 
-R-A2 — Avalonia 프레임워크 사용 시 RPi5에서 GPU 가속 렌더링이 소프트웨어 렌더링보다 느려(커뮤니티 보고: 가속 ~80ms vs 소프트웨어 6~12ms) 실시간 그래프(Rate/Scope) 갱신이 끊긴다
+R-A2 — Avalonia 프레임워크 사용 시 RPi5에서 GPU 가속 렌더링이 소프트웨어 렌더링보다 느려(커뮤니티 보고: 가속 약 80ms vs 소프트웨어 6–12ms) 실시간 그래프(Rate/Scope) 갱신이 끊긴다
 
 품질요소: Performance (UI Frame Rate / Latency)
 
-근거: Avalonia GitHub에 RPi/임베디드의 GPU 가속 성능 저하 보고 다수 — #18807(RPi5, 가속 ~80ms), #18942(RPi 고해상도 프레임 저하), #19288(임베디드 X11 GL 저속), #18127(RPi vsync 미준수). pdf (p.25 Real Time Performance)
+근거: Avalonia GitHub에 RPi/임베디드의 GPU 가속 성능 저하 보고 다수 — #18807(RPi5, 가속 약 80ms), #18942(RPi 고해상도 프레임 저하), #19288(임베디드 X11 GL 저속), #18127(RPi vsync 미준수). pdf (p.25 Real Time Performance)
 
 발생 확률 / 영향: Medium / High
 
