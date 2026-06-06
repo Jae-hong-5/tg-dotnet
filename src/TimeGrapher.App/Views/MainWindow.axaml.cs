@@ -13,6 +13,7 @@ using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 
 using TimeGrapher.App;
+using TimeGrapher.App.Audio;
 using TimeGrapher.App.Rendering;
 using TimeGrapher.App.Tabs;
 using TimeGrapher.Core.Analysis;
@@ -36,8 +37,6 @@ public partial class MainWindow : Window
     private const int DEFAULT_SOUND_IMAGE_WIDTH = 1019;
     private const int DEFAULT_SOUND_IMAGE_HEIGHT = 654;
     private const int WORKER_STOP_TIMEOUT_MS = 2000;
-
-    private static bool WindowsAudioAvailable => OperatingSystem.IsWindows();
 
     private const string PLAYBACK_OR_SIM_PCM = "Playback/Sim";
 
@@ -125,7 +124,7 @@ public partial class MainWindow : Window
     private InfoTabRegistry mInfoTabRegistry = null!;
     private MasterAudioBuffer? mRawAudio;
     private AnalysisWorker? mAnalysisWorker;
-    private AudioCaptureWorker? mAudioWorker;
+    private ILiveAudioWorker? mAudioWorker;
     private PlaybackWorker? mPlaybackWorker;
     private SimWorker? mSimWorker;
     private readonly int[] mAvalableRates = new int[5];
@@ -252,7 +251,7 @@ public partial class MainWindow : Window
 
     private void ConfigureSoundCard()
     {
-        if (!WindowsAudioAvailable)
+        if (!OperatingSystem.IsWindows())
         {
             return;
         }
@@ -265,12 +264,12 @@ public partial class MainWindow : Window
     {
         mSuppressEvents = true;
 
-        IReadOnlyList<string> inputDevices = Array.Empty<string>();
-        if (WindowsAudioAvailable)
+        IReadOnlyList<LiveAudioDevice> inputDevices = Array.Empty<LiveAudioDevice>();
+        if (LiveAudioBackend.CanCapture)
         {
             try
             {
-                inputDevices = AudioCaptureWorker.EnumerateInputDevices();
+                inputDevices = LiveAudioBackend.EnumerateInputDevices();
             }
             catch (Exception ex)
             {
@@ -288,7 +287,8 @@ public partial class MainWindow : Window
         int renameLen = RenameAudioDevices.Length;
         for (int dev = 0; dev < inputDevices.Count; dev++)
         {
-            string description = inputDevices[dev];
+            LiveAudioDevice device = inputDevices[dev];
+            string description = device.Name;
             for (int i = 0; i < renameLen; i++)
             {
                 if (description.Contains(RenameAudioDevices[i][0], StringComparison.Ordinal))
@@ -298,7 +298,7 @@ public partial class MainWindow : Window
                 }
             }
             InputDeviceComboBox.Items.Add(description);
-            mInputDeviceNumbers.Add(dev);
+            mInputDeviceNumbers.Add(device.Number);
             Console.Error.WriteLine("Device Name - " + description);
         }
 
@@ -405,13 +405,13 @@ public partial class MainWindow : Window
 
     private void StartAudioThread()
     {
-        if (!WindowsAudioAvailable)
+        int deviceNumber = CurrentInputDeviceNumber();
+        if (deviceNumber < 0)
         {
-            throw new PlatformNotSupportedException("Live audio capture is only implemented for Windows. Use Playback or Sim on this platform.");
+            throw new InvalidOperationException("No live audio device is selected.");
         }
 
         ulong runSessionToken = BeginRunSession();
-        int deviceNumber = CurrentInputDeviceNumber();
         StopAnalysisThread();
         Reset();
 
@@ -419,7 +419,7 @@ public partial class MainWindow : Window
         mRawAudio = new MasterAudioBuffer(mCurrentSamplesPerSecond);
         StartAnalysisThread();
 
-        mAudioWorker = new AudioCaptureWorker(mRawAudio);
+        mAudioWorker = LiveAudioBackend.CreateWorker(mRawAudio);
         // AudioDataReady -> analysis worker (DataReady is notify-only).
         mAudioDataReadyHandler = CreateDataReadyHandler(runSessionToken);
         mAudioWorker.DataReady += mAudioDataReadyHandler;
@@ -974,11 +974,10 @@ public partial class MainWindow : Window
                 mNumberofRates++;
             }
         }
-        else if (WindowsAudioAvailable)
+        else
         {
-            IReadOnlyList<int> supported = AudioCaptureWorker.GetCandidateSampleRates(deviceNumber);
-            // NAudio cannot probe arbitrary formats up front like Qt did. Show the standard
-            // candidates and let AudioCaptureWorker.Start() be the authoritative validation.
+            IReadOnlyList<int> supported = LiveAudioBackend.GetCandidateSampleRates(deviceNumber);
+            // Capture backend startup remains the authoritative validation point.
             foreach (int rate in standardRates)
             {
                 if (supported.Contains(rate) && mNumberofRates < mAvalableRates.Length)
@@ -987,15 +986,6 @@ public partial class MainWindow : Window
                     mAvalableRates[mNumberofRates] = rate;
                     mNumberofRates++;
                 }
-            }
-        }
-        else
-        {
-            foreach (int rate in standardRates)
-            {
-                SampleRatesComboBox.Items.Add(rate.ToString(CultureInfo.InvariantCulture) + " Hz");
-                mAvalableRates[mNumberofRates] = rate;
-                mNumberofRates++;
             }
         }
 
