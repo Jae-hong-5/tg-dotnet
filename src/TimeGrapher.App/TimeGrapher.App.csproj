@@ -20,6 +20,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <AvaloniaResource Include="Assets\Splash\*.png" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\TimeGrapher.Core\TimeGrapher.Core.csproj" />
     <ProjectReference Include="..\TimeGrapher.Platform.WindowsAudio\TimeGrapher.Platform.WindowsAudio.csproj" />
   </ItemGroup>
