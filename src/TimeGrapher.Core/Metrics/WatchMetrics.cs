@@ -122,12 +122,10 @@ public sealed class WatchMetrics
             ? (eventSample - _lastAEvent) / (double)_config.SampleRate
             : 0.0;
 
-        update.CMarkerTextUpdated = true;
-        update.CMarkerText = FormatCMarkerText(beatTimeSeconds, haveValidBph, bph);
+        update.SetCMarkerText(FormatCMarkerText(beatTimeSeconds, haveValidBph, bph));
 
         ComputeAmplitude(eventSample, bph);
-        update.ResultsUpdated = true;
-        update.ResultsText = FormatResults();
+        update.SetResults(FormatResults());
         return update;
     }
 
@@ -203,17 +201,13 @@ public sealed class WatchMetrics
             {
                 _rlsTicRate.AddPoint(timeMeasured, instTimingError);
                 AddOrOverwrite(_xTic, _yTic, wrappedRateError, _config.MaxRateDataPoints, ref _xTicIndex);
-                update.TicRateUpdated = true;
-                update.XTic = new List<double>(_xTic);
-                update.YTic = new List<double>(_yTic);
+                update.SetTicRate(_xTic, _yTic);
             }
             else
             {
                 _rlsTocRate.AddPoint(timeMeasured, instTimingError);
                 AddOrOverwrite(_xToc, _yToc, wrappedRateError, _config.MaxRateDataPoints, ref _xTocIndex);
-                update.TocRateUpdated = true;
-                update.XToc = new List<double>(_xToc);
-                update.YToc = new List<double>(_yToc);
+                update.SetTocRate(_xToc, _yToc);
             }
 
             if (ticOrToc == Toc)

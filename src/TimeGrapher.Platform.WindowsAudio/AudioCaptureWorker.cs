@@ -14,7 +14,7 @@ namespace TimeGrapher.Platform.WindowsAudio;
 /// shared <see cref="MasterAudioBuffer"/>, maintains the original 2-second FPS/SPS/SPF
 /// statistics, and raises <see cref="DataReady"/> after each captured block.
 /// </summary>
-public sealed class AudioCaptureWorker : IAudioInputWorker
+public sealed class AudioCaptureWorker : ILiveAudioWorker
 {
     private const int Channels = MasterAudioBuffer.Channels; // mono
 

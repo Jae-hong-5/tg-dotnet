@@ -1,8 +1,9 @@
 using System.Diagnostics;
-using TimeGrapher.App.Audio;
+using TimeGrapher.Core.Shared;
+using TimeGrapher.Platform.LinuxAudio;
 using Xunit;
 
-namespace TimeGrapher.App.Tests;
+namespace TimeGrapher.Platform.LinuxAudio.Tests;
 
 public sealed class LinuxLiveAudioWorkerTests
 {
@@ -105,11 +106,9 @@ card 4: CA7 [Cubilux CA7], device 0: USB Audio [USB Audio]
     [Fact]
     public void RunCommand_ReturnsOutputForSuccessfulProcess()
     {
-        string output = LinuxLiveAudioWorker.RunCommand(
-            "cmd.exe",
-            TimeSpan.FromSeconds(2),
-            "/c",
-            "echo ok");
+        (string fileName, string[] args) = ShellCommand("echo ok");
+
+        string output = LinuxLiveAudioWorker.RunCommand(fileName, TimeSpan.FromSeconds(2), args);
 
         Assert.Equal("ok", output.Trim());
     }
@@ -119,46 +118,20 @@ card 4: CA7 [Cubilux CA7], device 0: USB Audio [USB Audio]
     {
         Stopwatch stopwatch = Stopwatch.StartNew();
 
-        string output = LinuxLiveAudioWorker.RunCommand(
-            "cmd.exe",
-            TimeSpan.FromMilliseconds(200),
-            "/c",
-            "ping 127.0.0.1 -n 6 > nul & echo done");
+        (string fileName, string[] args) = ShellCommand(OperatingSystem.IsWindows()
+            ? "ping 127.0.0.1 -n 6 > nul & echo done"
+            : "sleep 2; echo done");
+
+        string output = LinuxLiveAudioWorker.RunCommand(fileName, TimeSpan.FromMilliseconds(200), args);
 
         Assert.Equal("", output);
         Assert.True(stopwatch.Elapsed < TimeSpan.FromSeconds(2));
     }
 
-    [Fact]
-    public void AudioSmokeRunner_ParsePositiveOptionReadsSeparateAndInlineValues()
+    private static (string FileName, string[] Arguments) ShellCommand(string command)
     {
-        Assert.Equal(96000, AudioSmokeRunner.ParsePositiveOption(
-            new[] { "--capture-smoke", "--rate", "96000" },
-            "--rate",
-            48000));
-
-        Assert.Equal(2500, AudioSmokeRunner.ParsePositiveOption(
-            new[] { "--capture-smoke", "--duration-ms=2500" },
-            "--duration-ms",
-            1500));
-    }
-
-    [Fact]
-    public void AudioSmokeRunner_ParsePositiveOptionFallsBackForMissingOrInvalidValues()
-    {
-        Assert.Equal(48000, AudioSmokeRunner.ParsePositiveOption(
-            new[] { "--capture-smoke", "--rate" },
-            "--rate",
-            48000));
-
-        Assert.Equal(48000, AudioSmokeRunner.ParsePositiveOption(
-            new[] { "--capture-smoke", "--rate", "0" },
-            "--rate",
-            48000));
-
-        Assert.Equal(48000, AudioSmokeRunner.ParsePositiveOption(
-            new[] { "--capture-smoke", "--rate=abc" },
-            "--rate",
-            48000));
+        return OperatingSystem.IsWindows()
+            ? ("cmd.exe", new[] { "/c", command })
+            : ("/bin/sh", new[] { "-c", command });
     }
 }

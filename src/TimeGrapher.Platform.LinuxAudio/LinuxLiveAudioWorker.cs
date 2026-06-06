@@ -5,9 +5,9 @@ using System.Text;
 using System.Text.RegularExpressions;
 using TimeGrapher.Core.Shared;
 
-namespace TimeGrapher.App.Audio;
+namespace TimeGrapher.Platform.LinuxAudio;
 
-internal sealed class LinuxLiveAudioWorker : ILiveAudioWorker
+public sealed class LinuxLiveAudioWorker : ILiveAudioWorker
 {
     private const int ReplacementStopTimeoutMs = 2000;
     private const int StartupFailureProbeTimeoutMs = 250;

@@ -31,26 +31,26 @@ public sealed class MasterAudioBuffer
 
     public readonly object Lock = new();
 
-    public float[] Samples;
-    public int NumberOfAudioSamples;
+    private float[] _samples;
+    private int _numberOfAudioSamples;
 
-    public uint WriteIndex;
-    public ulong TotalSamplesWritten;
+    private uint _writeIndex;
+    private ulong _totalSamplesWritten;
 
     // C++: MainThrd_LastTotalSamplesWritten / MainThrd_LastWriteIndex
     // ("MainThrd" historically; owned by the analysis worker in this port.)
-    public ulong AnalysisLastTotalSamplesWritten;
-    public uint AnalysisLastWriteIndex;
+    private ulong _analysisLastTotalSamplesWritten;
+    private uint _analysisLastWriteIndex;
 
     // Input-side throughput stats displayed in the status bar.
-    public double Fps;
-    public double Spf;
-    public double Sps;
+    private double _fps;
+    private double _spf;
+    private double _sps;
 
     public MasterAudioBuffer(int sampleRate)
     {
-        NumberOfAudioSamples = sampleRate * SecondsOfBuffer;
-        Samples = new float[NumberOfAudioSamples];
+        _numberOfAudioSamples = sampleRate * SecondsOfBuffer;
+        _samples = new float[_numberOfAudioSamples];
     }
 
     /// <summary>Ring-write a block of mono float samples (input worker thread).</summary>
@@ -60,10 +60,10 @@ public sealed class MasterAudioBuffer
         {
             for (int i = 0; i < data.Length; i++)
             {
-                Samples[WriteIndex] = data[i];
-                WriteIndex = (WriteIndex + 1) % (uint)NumberOfAudioSamples;
+                _samples[_writeIndex] = data[i];
+                _writeIndex = (_writeIndex + 1) % (uint)_numberOfAudioSamples;
             }
-            TotalSamplesWritten += (ulong)data.Length;
+            _totalSamplesWritten += (ulong)data.Length;
         }
     }
 
@@ -72,9 +72,9 @@ public sealed class MasterAudioBuffer
     {
         lock (Lock)
         {
-            Fps = fps;
-            Spf = spf;
-            Sps = sps;
+            _fps = fps;
+            _spf = spf;
+            _sps = sps;
         }
     }
 
@@ -83,7 +83,7 @@ public sealed class MasterAudioBuffer
     {
         lock (Lock)
         {
-            return new MasterAudioBufferSnapshot(TotalSamplesWritten, Fps, Spf, Sps, NumberOfAudioSamples);
+            return new MasterAudioBufferSnapshot(_totalSamplesWritten, _fps, _spf, _sps, _numberOfAudioSamples);
         }
     }
 
@@ -98,35 +98,35 @@ public sealed class MasterAudioBuffer
     {
         lock (Lock)
         {
-            ulong currentTotalSamplesWritten = TotalSamplesWritten;
+            ulong currentTotalSamplesWritten = _totalSamplesWritten;
             ulong targetSampleEnd = Math.Min(sourceSampleEnd, currentTotalSamplesWritten);
-            ulong originalPendingSamples = targetSampleEnd > AnalysisLastTotalSamplesWritten
-                ? targetSampleEnd - AnalysisLastTotalSamplesWritten
+            ulong originalPendingSamples = targetSampleEnd > _analysisLastTotalSamplesWritten
+                ? targetSampleEnd - _analysisLastTotalSamplesWritten
                 : 0;
 
             bool inputOverrun = false;
             ulong inputSamplesDropped = 0;
-            ulong retainedCapacity = (ulong)NumberOfAudioSamples;
-            if (currentTotalSamplesWritten > AnalysisLastTotalSamplesWritten &&
-                currentTotalSamplesWritten - AnalysisLastTotalSamplesWritten > retainedCapacity)
+            ulong retainedCapacity = (ulong)_numberOfAudioSamples;
+            if (currentTotalSamplesWritten > _analysisLastTotalSamplesWritten &&
+                currentTotalSamplesWritten - _analysisLastTotalSamplesWritten > retainedCapacity)
             {
                 inputOverrun = true;
-                inputSamplesDropped = currentTotalSamplesWritten - AnalysisLastTotalSamplesWritten - retainedCapacity;
-                AnalysisLastTotalSamplesWritten = currentTotalSamplesWritten - retainedCapacity;
-                AnalysisLastWriteIndex = (uint)(AnalysisLastTotalSamplesWritten % retainedCapacity);
+                inputSamplesDropped = currentTotalSamplesWritten - _analysisLastTotalSamplesWritten - retainedCapacity;
+                _analysisLastTotalSamplesWritten = currentTotalSamplesWritten - retainedCapacity;
+                _analysisLastWriteIndex = (uint)(_analysisLastTotalSamplesWritten % retainedCapacity);
             }
 
             int copyCount = 0;
-            if (destination.Length > 0 && targetSampleEnd > AnalysisLastTotalSamplesWritten)
+            if (destination.Length > 0 && targetSampleEnd > _analysisLastTotalSamplesWritten)
             {
-                ulong pendingSamples = targetSampleEnd - AnalysisLastTotalSamplesWritten;
+                ulong pendingSamples = targetSampleEnd - _analysisLastTotalSamplesWritten;
                 copyCount = (int)Math.Min((ulong)destination.Length, pendingSamples);
                 for (int i = 0; i < copyCount; i++)
                 {
-                    destination[i] = Samples[AnalysisLastWriteIndex];
-                    AnalysisLastWriteIndex = (AnalysisLastWriteIndex + 1) % (uint)NumberOfAudioSamples;
+                    destination[i] = _samples[_analysisLastWriteIndex];
+                    _analysisLastWriteIndex = (_analysisLastWriteIndex + 1) % (uint)_numberOfAudioSamples;
                 }
-                AnalysisLastTotalSamplesWritten += (ulong)copyCount;
+                _analysisLastTotalSamplesWritten += (ulong)copyCount;
             }
 
             return new MasterAudioBufferReadResult(
@@ -135,10 +135,10 @@ public sealed class MasterAudioBuffer
                 originalPendingSamples,
                 inputOverrun,
                 inputSamplesDropped,
-                Fps,
-                Spf,
-                Sps,
-                NumberOfAudioSamples);
+                _fps,
+                _spf,
+                _sps,
+                _numberOfAudioSamples);
         }
     }
 
@@ -148,7 +148,7 @@ public sealed class MasterAudioBuffer
         int sampleRate;
         lock (Lock)
         {
-            sampleRate = Math.Max(1, NumberOfAudioSamples / SecondsOfBuffer);
+            sampleRate = Math.Max(1, _numberOfAudioSamples / SecondsOfBuffer);
         }
         Reset(sampleRate);
     }
@@ -159,20 +159,20 @@ public sealed class MasterAudioBuffer
         lock (Lock)
         {
             int wanted = sampleRate * SecondsOfBuffer;
-            if (wanted != NumberOfAudioSamples)
+            if (wanted != _numberOfAudioSamples)
             {
-                NumberOfAudioSamples = wanted;
-                Samples = new float[wanted];
+                _numberOfAudioSamples = wanted;
+                _samples = new float[wanted];
             }
             else
             {
-                Array.Clear(Samples);
+                Array.Clear(_samples);
             }
-            WriteIndex = 0;
-            TotalSamplesWritten = 0;
-            AnalysisLastTotalSamplesWritten = 0;
-            AnalysisLastWriteIndex = 0;
-            Fps = Spf = Sps = 0.0;
+            _writeIndex = 0;
+            _totalSamplesWritten = 0;
+            _analysisLastTotalSamplesWritten = 0;
+            _analysisLastWriteIndex = 0;
+            _fps = _spf = _sps = 0.0;
         }
     }
 }

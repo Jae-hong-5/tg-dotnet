@@ -11,6 +11,18 @@
     <RuntimeIdentifiers>win-x64;linux-arm64</RuntimeIdentifiers>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' == ''">
+    <DefineConstants>$(DefineConstants);TIMEGRAPHER_WINDOWS_AUDIO;TIMEGRAPHER_LINUX_AUDIO</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' == 'win-x64'">
+    <DefineConstants>$(DefineConstants);TIMEGRAPHER_WINDOWS_AUDIO</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' == 'linux-arm64'">
+    <DefineConstants>$(DefineConstants);TIMEGRAPHER_LINUX_AUDIO</DefineConstants>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Avalonia" />
     <PackageReference Include="Avalonia.Desktop" />
@@ -26,7 +38,14 @@
 
   <ItemGroup>
     <ProjectReference Include="..\TimeGrapher.Core\TimeGrapher.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(RuntimeIdentifier)' == '' Or '$(RuntimeIdentifier)' == 'win-x64'">
     <ProjectReference Include="..\TimeGrapher.Platform.WindowsAudio\TimeGrapher.Platform.WindowsAudio.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(RuntimeIdentifier)' == '' Or '$(RuntimeIdentifier)' == 'linux-arm64'">
+    <ProjectReference Include="..\TimeGrapher.Platform.LinuxAudio\TimeGrapher.Platform.LinuxAudio.csproj" />
   </ItemGroup>
 
 </Project>

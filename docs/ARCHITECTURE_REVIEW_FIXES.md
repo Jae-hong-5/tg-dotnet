@@ -69,9 +69,34 @@ Date: 2026-06-06
 
 - `TimeGrapher.Core`는 NAudio, PipeWire, ALSA를 참조하지 않는다.
 - Windows capture는 `TimeGrapher.Platform.WindowsAudio`에 둔다.
-- Linux/Pi capture는 App 경계의 worker가 PipeWire/ALSA command를 사용한다.
+- Linux/Pi capture는 `TimeGrapher.Platform.LinuxAudio`에 둔다.
+- `ILiveAudioWorker`와 `LiveAudioDevice` 계약은 Core 공유 계층에 둔다.
+- `win-x64` publish는 WindowsAudio만, `linux-arm64` publish는 LinuxAudio만 참조한다.
 
 효과: Core는 플랫폼 없이 테스트할 수 있고, 입력 방식은 교체 가능하다.
+
+### 7. 실행 lifecycle 분리
+
+문제: `MainWindow`가 worker, buffer, run token, analysis thread 상태를 직접 소유했다.
+
+수정:
+
+- `RunSessionController`가 input worker, analysis worker, `MasterAudioBuffer`, run session token을 소유한다.
+- `MainWindow`는 UI 선택, dialog, 상태 표시 연결만 담당한다.
+- worker stop timeout과 stale callback 무시는 controller 경계로 옮겼다.
+
+효과: 시작/중지 정책을 UI 코드에서 분리해 테스트와 확장 경계가 명확해졌다.
+
+### 8. Core mutable state 축소
+
+문제: `MasterAudioBuffer` 내부 ring buffer 상태와 `AnalysisFrame` 리스트 payload를 외부에서 바꿀 수 있었다.
+
+수정:
+
+- `MasterAudioBuffer` 내부 배열과 cursor는 private 필드로 닫고 snapshot/read/write API만 노출한다.
+- `AnalysisFrame`의 series/marker 컬렉션은 App에 읽기 전용으로 노출하고 Core projector만 채운다.
+
+효과: App/Platform 코드가 Core 내부 상태를 우회 변경할 가능성이 줄었다.
 
 ### 6. 스플래시 화면 추가
 

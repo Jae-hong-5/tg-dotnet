@@ -18,7 +18,7 @@ public partial class MainWindow
 
         public bool IsClosing => _owner.mIsClosing;
 
-        public bool HasActiveWorker => _owner.mInputWorker != null;
+        public bool HasActiveWorker => _owner.mRunSessionController.HasActiveInputWorker;
 
         public RunCommandMode CurrentMode
         {
@@ -72,8 +72,8 @@ public partial class MainWindow
         public void CleanupFailedStart()
         {
             _owner.InvalidateRunSession();
-            _owner.StopInputWorker("Input");
-            _owner.StopAnalysisThread();
+            _owner.mRunSessionController.StopInputWorker("Input");
+            _owner.mRunSessionController.StopAnalysisThread();
             _owner.AudioCloseCheck();
         }
 
@@ -84,19 +84,25 @@ public partial class MainWindow
 
         public RunCommandStopOutcome StopLive()
         {
-            StopOutcome outcome = CombineStopOutcome(_owner.StopAudioThread(), _owner.StopAnalysisThread());
+            RunSessionStopOutcome outcome = CombineStopOutcome(
+                _owner.StopAudioThread(),
+                _owner.mRunSessionController.StopAnalysisThread());
             return MapStopOutcome(outcome);
         }
 
         public RunCommandStopOutcome StopPlayback()
         {
-            StopOutcome outcome = CombineStopOutcome(_owner.StopPlaybackThread(), _owner.StopAnalysisThread());
+            RunSessionStopOutcome outcome = CombineStopOutcome(
+                _owner.StopPlaybackThread(),
+                _owner.mRunSessionController.StopAnalysisThread());
             return MapStopOutcome(outcome);
         }
 
         public RunCommandStopOutcome StopSimulation()
         {
-            StopOutcome outcome = CombineStopOutcome(_owner.StopSimThread(), _owner.StopAnalysisThread());
+            RunSessionStopOutcome outcome = CombineStopOutcome(
+                _owner.StopSimThread(),
+                _owner.mRunSessionController.StopAnalysisThread());
             return MapStopOutcome(outcome);
         }
 
@@ -115,9 +121,9 @@ public partial class MainWindow
             _owner.RestorePlaybackOrSimulationAudioState();
         }
 
-        private static RunCommandStopOutcome MapStopOutcome(StopOutcome outcome)
+        private static RunCommandStopOutcome MapStopOutcome(RunSessionStopOutcome outcome)
         {
-            return outcome == StopOutcome.Stopped
+            return outcome == RunSessionStopOutcome.Stopped
                 ? RunCommandStopOutcome.Stopped
                 : RunCommandStopOutcome.Stopping;
         }

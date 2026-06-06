@@ -56,30 +56,73 @@ public static class AnalysisGraphSeries
 
 public sealed class GraphSeriesFrame
 {
-    public string Id = "";
-    public List<double> X = new();
-    public List<double> Y = new();
+    public string Id { get; init; } = "";
+    public IReadOnlyList<double> X { get; init; } = Array.Empty<double>();
+    public IReadOnlyList<double> Y { get; init; } = Array.Empty<double>();
     /// <summary>true = replace the previous UI graph payload for this series.</summary>
-    public bool Replace;
+    public bool Replace { get; init; }
 }
 
 /// <summary>Port of WatchMetricsUpdate (WatchMetrics.h).</summary>
 public sealed class WatchMetricsUpdate
 {
-    public bool TicRateUpdated;
-    public bool TocRateUpdated;
-    public List<double> XTic = new();
-    public List<double> YTic = new();
-    public List<double> XToc = new();
-    public List<double> YToc = new();
-    public bool ResultsUpdated;
-    public string ResultsText = "";
-    public bool CMarkerTextUpdated;
-    public string CMarkerText = "";
+    private readonly List<double> _xTic = new();
+    private readonly List<double> _yTic = new();
+    private readonly List<double> _xToc = new();
+    private readonly List<double> _yToc = new();
+
+    public bool TicRateUpdated { get; private set; }
+    public bool TocRateUpdated { get; private set; }
+    public IReadOnlyList<double> XTic => _xTic;
+    public IReadOnlyList<double> YTic => _yTic;
+    public IReadOnlyList<double> XToc => _xToc;
+    public IReadOnlyList<double> YToc => _yToc;
+    public bool ResultsUpdated { get; private set; }
+    public string ResultsText { get; private set; } = "";
+    public bool CMarkerTextUpdated { get; private set; }
+    public string CMarkerText { get; private set; } = "";
+
+    internal void SetTicRate(IReadOnlyList<double> x, IReadOnlyList<double> y)
+    {
+        Replace(_xTic, x);
+        Replace(_yTic, y);
+        TicRateUpdated = true;
+    }
+
+    internal void SetTocRate(IReadOnlyList<double> x, IReadOnlyList<double> y)
+    {
+        Replace(_xToc, x);
+        Replace(_yToc, y);
+        TocRateUpdated = true;
+    }
+
+    internal void SetResults(string text)
+    {
+        ResultsText = text;
+        ResultsUpdated = true;
+    }
+
+    internal void SetCMarkerText(string text)
+    {
+        CMarkerText = text;
+        CMarkerTextUpdated = true;
+    }
+
+    private static void Replace(List<double> target, IReadOnlyList<double> source)
+    {
+        target.Clear();
+        target.AddRange(source);
+    }
 }
 
 public sealed class AnalysisFrame
 {
+    private readonly List<GraphSeriesFrame> _scopeSeries = new();
+    private readonly List<GraphSeriesFrame> _rateSeries = new();
+    private readonly List<ScopeVerticalMarker> _verticalMarkers = new();
+    private readonly List<ScopeHorizontalMarker> _horizontalMarkers = new();
+    private readonly List<ScopeTextMarker> _textMarkers = new();
+
     public ulong SessionId;
     public ulong SourceId;
     public ulong SourceSampleEnd;
@@ -89,12 +132,12 @@ public sealed class AnalysisFrame
     public ulong AnalysisLagSamples;
     public double ProcessingElapsedMs;
 
-    public List<GraphSeriesFrame> ScopeSeries = new();
-    public List<GraphSeriesFrame> RateSeries = new();
+    public IReadOnlyList<GraphSeriesFrame> ScopeSeries => _scopeSeries;
+    public IReadOnlyList<GraphSeriesFrame> RateSeries => _rateSeries;
 
-    public List<ScopeVerticalMarker> VerticalMarkers = new();
-    public List<ScopeHorizontalMarker> HorizontalMarkers = new();
-    public List<ScopeTextMarker> TextMarkers = new();
+    public IReadOnlyList<ScopeVerticalMarker> VerticalMarkers => _verticalMarkers;
+    public IReadOnlyList<ScopeHorizontalMarker> HorizontalMarkers => _horizontalMarkers;
+    public IReadOnlyList<ScopeTextMarker> TextMarkers => _textMarkers;
 
     public WatchMetricsUpdate MetricsUpdate = new();
     public PixelBuffer? SoundImage;
@@ -109,4 +152,30 @@ public sealed class AnalysisFrame
     public double ForegroundSps;
     public double ForegroundSpf;
     public bool ForegroundStatsUpdated;
+
+    internal void AddScopeSeries(GraphSeriesFrame series)
+    {
+        _scopeSeries.Add(series);
+    }
+
+    internal void AddRateSeries(GraphSeriesFrame series)
+    {
+        _rateSeries.Add(series);
+    }
+
+    internal void SetScopeMarkers(
+        IReadOnlyList<ScopeVerticalMarker> verticalMarkers,
+        IReadOnlyList<ScopeHorizontalMarker> horizontalMarkers,
+        IReadOnlyList<ScopeTextMarker> textMarkers)
+    {
+        Replace(_verticalMarkers, verticalMarkers);
+        Replace(_horizontalMarkers, horizontalMarkers);
+        Replace(_textMarkers, textMarkers);
+    }
+
+    private static void Replace<T>(List<T> target, IReadOnlyList<T> source)
+    {
+        target.Clear();
+        target.AddRange(source);
+    }
 }

@@ -43,9 +43,11 @@ Pi에서 화면 없이 audio 상태를 확인할 때:
 | `TimeGrapher.Core` | UI/플랫폼 무관 로직 — 검출 코어(tg_* 포트), 메트릭, 사운드 이미지 렌더러, WAV reader/writer, 시뮬레이터, 분석 워커 |
 | `TimeGrapher.App` | Avalonia 11.3 UI — MainWindow, 정보 탭 목록/전달자, ScottPlot 렌더러, 플랫폼별 live audio 선택 |
 | `TimeGrapher.Platform.WindowsAudio` | Windows live audio backend — NAudio WaveInEvent capture, Windows endpoint volume helpers |
+| `TimeGrapher.Platform.LinuxAudio` | Linux/Pi live audio backend — PipeWire `pw-record` capture, ALSA `arecord` fallback, source probing |
 | `TimeGrapher.Verify` | 헤드리스 검증 콘솔 — 샘플 WAV의 파일명 BPH와 검출 BPH 비교, 전부 일치 시 exit 0 |
 | `TimeGrapher.Core.Tests` | xUnit 회귀 테스트 — 합성 시계 신호 검출, WAV writer/reader round-trip |
 | `TimeGrapher.App.Tests` | 정보 탭 규칙, 렌더링 데이터 규칙, UI 전달 데이터 축소 회귀 테스트 |
+| `TimeGrapher.Platform.LinuxAudio.Tests` | Linux/Pi audio source parser와 process timeout 계약 테스트 |
 
 문서:
 
@@ -59,9 +61,11 @@ Pi에서 화면 없이 audio 상태를 확인할 때:
 audio backend(Windows는 NAudio WaveInEvent, Linux/Pi는 PipeWire `pw-record` + ALSA `arecord` fallback), QImage→PixelBuffer(ARGB32)→WriteableBitmap,
 QThread/signal→전용 Thread + AutoResetEvent + `Dispatcher.UIThread.Post`. WPF 미사용.
 
-Core는 WindowsAudio/NAudio/PipeWire를 참조하지 않는다. live audio backend는 App의 작은
+Core는 WindowsAudio/NAudio/PipeWire를 참조하지 않는다. live audio backend는 Core의 작은
 `ILiveAudioWorker` 계약 뒤에서 선택되고, 실행 중인 Live/Playback/Sim 입력 worker는
 공통 `IAudioInputWorker` lifecycle로 pause/stop/data-ready를 처리한다.
+`win-x64` publish에는 WindowsAudio만, `linux-arm64` publish에는 LinuxAudio만 들어가도록
+프로젝트 참조를 RID 기준으로 분리한다.
 
 패키지 버전은 `Directory.Packages.props`에서 중앙 관리하고 `packages.lock.json`을 커밋한다.
 CI는 `dotnet restore --locked-mode`, Release build, test, generated/edge WAV verifier,

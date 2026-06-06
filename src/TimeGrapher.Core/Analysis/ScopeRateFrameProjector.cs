@@ -77,7 +77,7 @@ public sealed class ScopeRateFrameProjector
         if (_scopeWindowX.Count != 0)
         {
             var scopeX = new List<double>(_scopeWindowX);
-            frame.ScopeSeries.Add(new GraphSeriesFrame
+            frame.AddScopeSeries(new GraphSeriesFrame
             {
                 Id = AnalysisGraphSeries.ScopePcm,
                 X = scopeX,
@@ -85,7 +85,7 @@ public sealed class ScopeRateFrameProjector
                 Replace = true,
             });
 
-            frame.ScopeSeries.Add(new GraphSeriesFrame
+            frame.AddScopeSeries(new GraphSeriesFrame
             {
                 Id = AnalysisGraphSeries.ScopeThreshold,
                 X = scopeX,
@@ -94,19 +94,16 @@ public sealed class ScopeRateFrameProjector
             });
         }
 
-        frame.VerticalMarkers = new List<ScopeVerticalMarker>(_scopeWindowVerticalMarkers);
-        frame.HorizontalMarkers = new List<ScopeHorizontalMarker>(_scopeWindowHorizontalMarkers);
-        frame.TextMarkers = new List<ScopeTextMarker>(_scopeWindowTextMarkers);
+        frame.SetScopeMarkers(_scopeWindowVerticalMarkers, _scopeWindowHorizontalMarkers, _scopeWindowTextMarkers);
 
         if (_hasLatestResultsText)
         {
-            frame.MetricsUpdate.ResultsUpdated = true;
-            frame.MetricsUpdate.ResultsText = _latestResultsText;
+            frame.MetricsUpdate.SetResults(_latestResultsText);
         }
 
         if (_hasLatestTicRate)
         {
-            frame.RateSeries.Add(new GraphSeriesFrame
+            frame.AddRateSeries(new GraphSeriesFrame
             {
                 Id = AnalysisGraphSeries.RateTic,
                 X = new List<double>(_latestTicRateX),
@@ -117,7 +114,7 @@ public sealed class ScopeRateFrameProjector
 
         if (_hasLatestTocRate)
         {
-            frame.RateSeries.Add(new GraphSeriesFrame
+            frame.AddRateSeries(new GraphSeriesFrame
             {
                 Id = AnalysisGraphSeries.RateToc,
                 X = new List<double>(_latestTocRateX),
@@ -206,29 +203,24 @@ public sealed class ScopeRateFrameProjector
             ReplaceLatest(_latestTicRateX, update.XTic);
             ReplaceLatest(_latestTicRateY, update.YTic);
             _hasLatestTicRate = true;
-            frame.MetricsUpdate.TicRateUpdated = true;
-            frame.MetricsUpdate.XTic = update.XTic;
-            frame.MetricsUpdate.YTic = update.YTic;
+            frame.MetricsUpdate.SetTicRate(update.XTic, update.YTic);
         }
         if (update.TocRateUpdated)
         {
             ReplaceLatest(_latestTocRateX, update.XToc);
             ReplaceLatest(_latestTocRateY, update.YToc);
             _hasLatestTocRate = true;
-            frame.MetricsUpdate.TocRateUpdated = true;
-            frame.MetricsUpdate.XToc = update.XToc;
-            frame.MetricsUpdate.YToc = update.YToc;
+            frame.MetricsUpdate.SetTocRate(update.XToc, update.YToc);
         }
         if (update.ResultsUpdated)
         {
             _latestResultsText = update.ResultsText;
             _hasLatestResultsText = true;
-            frame.MetricsUpdate.ResultsUpdated = true;
-            frame.MetricsUpdate.ResultsText = update.ResultsText;
+            frame.MetricsUpdate.SetResults(update.ResultsText);
         }
     }
 
-    private static void ReplaceLatest(List<double> target, List<double> source)
+    private static void ReplaceLatest(List<double> target, IReadOnlyList<double> source)
     {
         target.Clear();
         target.AddRange(source);
