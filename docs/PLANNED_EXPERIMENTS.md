@@ -5,7 +5,7 @@
 
 ## 결과 및 권장 사항
 
-TO-DO: 실험 완료 후 기록.
+TO-DO: 실험 완료 후 기록. (수행 결과는 EXPERIMENT_RESULTS.md에 정리)
 
 ## 목적
 

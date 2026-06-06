@@ -18,6 +18,8 @@
 - `PLANNED_EXPERIMENTS.md`
   - technical-experiment-template을 따른 실험 계획
   - 실험 1: RPi5 렌더링 백엔드 성능 A/B 측정 (R-A2 검증용 spike)
+- `EXPERIMENT_RESULTS.md`
+  - 실험 1 수행 결과 (측정 환경, 백엔드별 결과표, 해석, 권장 사항)
 
 ## 작업 기록/근거용
 
