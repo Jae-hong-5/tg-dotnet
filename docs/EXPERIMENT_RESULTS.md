@@ -60,6 +60,21 @@
 3. 대형 이미지/ImageBrush는 추가하지 않는다 (원 보고의 실제 원인).
 4. **리스크 R-A2는 발생 확률을 Low로 하향하고 종결한다.**
 
+## 참고: Windows 측정 (동일 하니스, 동일 프로토콜)
+
+하니스의 크로스플랫폼 검증을 겸해 Windows 개발 PC(Intel Arc 내장 GPU, 1280×750 창)에서도 측정했다.
+Windows는 R-A2의 대상이 아니며 참고용이다.
+
+| 렌더링 백엔드 | GL 렌더러 | FPS | 평균 | p50 | p95 | p99 |
+|--------------|-----------|:---:|:---:|:---:|:---:|:---:|
+| ANGLE (기본값, D3D11) | ANGLE Direct3D11 | 57.8 | 17.3ms | 16.7ms | 18.1ms | 33.7ms |
+| WGL (OpenGL 직결) | Intel Arc Graphics (GL 4.0) | 61.6 | 16.2ms | 15.9ms | 17.3ms | 31.7ms |
+| Software (CPU) | — | 58.8 | 17.0ms | 15.9ms | 31.5ms | 32.2ms |
+
+세 모드 모두 화면 주사율(약 60Hz) 한계에 도달 — Windows에서는 어떤 백엔드든 차이가 없다.
+RPi5와 달리 Software도 60fps에 도달하는 이유는 데스크톱 CPU가 충분히 빠르기 때문이다.
+(Windows 기본값은 GLX/WGL이 아닌 ANGLE — OpenGL 명령을 Direct3D11로 번역하는 계층)
+
 ## 재현 방법
 
 ```bash
@@ -68,6 +83,11 @@ DISPLAY=:0 ./TimeGrapher.App --render-bench --render-mode=glx      --bench-label
 DISPLAY=:0 ./TimeGrapher.App --render-bench --render-mode=egl      --bench-label=pi5-egl
 DISPLAY=:0 ./TimeGrapher.App --render-bench --render-mode=software --bench-label=pi5-sw
 # 결과는 stdout에 "RENDER_BENCH_RESULT {json}" 한 줄로 출력됨
+
+# Windows에서 (참고 측정)
+TimeGrapher.App.exe --render-bench --render-mode=angle    --bench-label=win-angle
+TimeGrapher.App.exe --render-bench --render-mode=wgl      --bench-label=win-wgl
+TimeGrapher.App.exe --render-bench --render-mode=software --bench-label=win-sw
 ```
 
 하니스 코드: `src/TimeGrapher.App/Diagnostics/`, `src/TimeGrapher.App/Views/MainWindow.RenderBench.cs`

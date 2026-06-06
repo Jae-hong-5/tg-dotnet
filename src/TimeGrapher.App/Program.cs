@@ -52,6 +52,8 @@ internal static class Program
             "glx" => builder.With(new X11PlatformOptions { RenderingMode = new[] { X11RenderingMode.Glx } }),
             "egl" => builder.With(new X11PlatformOptions { RenderingMode = new[] { X11RenderingMode.Egl } }),
             "vulkan" => builder.With(new X11PlatformOptions { RenderingMode = new[] { X11RenderingMode.Vulkan } }),
+            "angle" => builder.With(new Win32PlatformOptions { RenderingMode = new[] { Win32RenderingMode.AngleEgl } }),
+            "wgl" => builder.With(new Win32PlatformOptions { RenderingMode = new[] { Win32RenderingMode.Wgl } }),
             _ => builder,
         };
     }
