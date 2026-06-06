@@ -17,3 +17,5 @@ R-A2 — Avalonia 프레임워크 사용 시 RPi5에서 GPU 가속 렌더링이 
 Tradeoff point: 렌더링 백엔드는 UI 프레임 안정성↔CPU 점유(Software 렌더링은 오디오 분석 스레드와 CPU 경쟁)의 tradeoff point
 
 코멘트: 유사 보고가 여러 건 퍼져 있으나 원인이 제각각(앱 측 버그, 해상도, 드라이버 경로)이라 우리 워크로드에서의 실측 확인 필요. 1주차 spike(Planned Experiments 실험 1) 결과로 렌더링 백엔드 기본값 유지/변경 결정
+
+업데이트 (2026-06-06, spike 완료): RPi5 실측 결과 GPU 가속(약 60fps)이 SW 렌더링(43.6fps)보다 빨랐고 보고는 재현되지 않음. 발생 확률 Medium → **Low** 하향, 리스크 **종결**. 렌더링 설정은 기본값 유지. 상세: [EXPERIMENT_RESULTS.md](EXPERIMENT_RESULTS.md)

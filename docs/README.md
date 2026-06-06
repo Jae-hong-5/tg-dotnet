@@ -1,6 +1,6 @@
 # TimeGrapherNet Docs
 
-문서는 세 종류로 나눈다.
+문서는 다음과 같이 나눈다.
 
 ## 발표/설명용
 
@@ -38,7 +38,7 @@
 
 ## 빠른 설명
 
-TimeGrapherNet의 핵심 변화는 다음 세 가지다.
+TimeGrapherNet의 핵심 변화는 다음 네 가지다.
 
 1. 분석 로직을 Core로 분리해 UI와 플랫폼에서 떼어냈다.
 2. Windows/Pi 입력 구현을 각각 platform 프로젝트로 분리하고 Core의 live-audio 계약 뒤에 둔다.
