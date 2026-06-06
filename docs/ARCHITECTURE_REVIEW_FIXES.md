@@ -9,21 +9,21 @@ Date: 2026-06-06
 - 한 번에 모든 탭을 렌더링하지 않는다.
 - 현재 활성 탭만 비싼 화면 갱신을 한다.
 - Core는 분석 결과를 만들고, App은 화면 배치와 refresh 정책을 가진다.
-- frame을 버려도 그래프 데이터가 깨지지 않아야 한다.
+- 화면 갱신 일부를 건너뛰어도 그래프 데이터가 깨지지 않아야 한다.
 
 ## 주요 수정
 
 ### 1. 화면 갱신 밀림 방지
 
-문제: 분석 frame이 빠르게 들어오면 UI queue가 밀릴 수 있었다.
+문제: 분석 결과가 빠르게 들어오면 화면 갱신 대기열이 밀릴 수 있었다.
 
 수정:
 
-- UI는 최신 pending frame 중심으로 렌더링한다.
-- scope/rate graph payload는 append가 아니라 replace snapshot 계약을 사용한다.
-- frame에는 lag, pending sample, dropped sample 정보를 포함한다.
+- UI는 최신 분석 결과 중심으로 렌더링한다.
+- 파형/오차 그래프는 누적 추가가 아니라 최신 묶음으로 교체한다.
+- 분석 결과에는 지연, 대기 샘플, 누락 샘플 정보를 포함한다.
 
-효과: UI가 늦어도 그래프가 중간 append 누락으로 깨지지 않는다.
+효과: UI가 늦어도 그래프가 중간 데이터 누락으로 깨지지 않는다.
 
 ### 2. 탭 구조 분리
 
@@ -31,9 +31,9 @@ Date: 2026-06-06
 
 수정:
 
-- `InfoTabCatalog`: 탭 ID, 제목, refresh interval 정의
-- `InfoTabRegistry`: 실제 Avalonia 탭과 renderer 생성
-- `AnalysisFrameRouter`: 활성 탭 consumer에만 비싼 render 호출
+- `InfoTabCatalog`: 탭 ID, 제목, 갱신 간격 정의
+- `InfoTabRegistry`: 실제 Avalonia 탭과 렌더러 생성
+- `AnalysisFrameRouter`: 활성 탭에만 비싼 화면 갱신 호출
 
 효과: 새 정보 탭을 추가할 때 고칠 위치가 명확해졌다.
 
@@ -99,8 +99,8 @@ dotnet publish .\src\TimeGrapher.App\TimeGrapher.App.csproj -c Release -r linux-
 결과:
 
 - Windows build: 경고 0, 오류 0
-- `TimeGrapher.Core.Tests`: 31 passed
-- `TimeGrapher.App.Tests`: 49 passed
+- `TimeGrapher.Core.Tests`: 통과
+- `TimeGrapher.App.Tests`: 통과
 - Windows Release publish: `--smoke` exit code 0
 - Windows GUI: 스플래시 후 `TimeGrapher` 메인 창 전환 확인
 - Raspberry Pi: `./TimeGrapher.App --smoke` 통과
@@ -110,4 +110,4 @@ dotnet publish .\src\TimeGrapher.App\TimeGrapher.App.csproj -c Release -r linux-
 
 - Pi에는 현재 capture source가 없어 live microphone 검증은 실제 USB mic 연결 후 다시 해야 한다.
 - 새 정보 탭은 `InfoTabCatalog`와 해당 `IAnalysisFrameConsumer`를 추가하는 방식으로 확장한다.
-- graph 탭은 frame drop에 안전하도록 append가 아니라 snapshot/replace 계약을 유지한다.
+- graph 탭은 화면 갱신 누락에 안전하도록 최신 묶음 교체 방식을 유지한다.

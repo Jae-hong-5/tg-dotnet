@@ -41,11 +41,11 @@ Pi에서 화면 없이 audio 상태를 확인할 때:
 | 프로젝트 | 내용 |
 |---|---|
 | `TimeGrapher.Core` | UI/플랫폼 무관 로직 — 검출 코어(tg_* 포트), 메트릭, 사운드 이미지 렌더러, WAV reader/writer, 시뮬레이터, 분석 워커 |
-| `TimeGrapher.App` | Avalonia 11.3 UI — MainWindow, 정보 tab catalog/router, ScottPlot 렌더러, platform live audio selector |
+| `TimeGrapher.App` | Avalonia 11.3 UI — MainWindow, 정보 탭 목록/전달자, ScottPlot 렌더러, 플랫폼별 live audio 선택 |
 | `TimeGrapher.Platform.WindowsAudio` | Windows live audio backend — NAudio WaveInEvent capture, Windows endpoint volume helpers |
 | `TimeGrapher.Verify` | 헤드리스 검증 콘솔 — 샘플 WAV의 파일명 BPH와 검출 BPH 비교, 전부 일치 시 exit 0 |
 | `TimeGrapher.Core.Tests` | xUnit 회귀 테스트 — 합성 시계 신호 검출, WAV writer/reader round-trip |
-| `TimeGrapher.App.Tests` | tab catalog/router, 렌더링 data contract, UI payload 축소 회귀 테스트 |
+| `TimeGrapher.App.Tests` | 정보 탭 규칙, 렌더링 데이터 규칙, UI 전달 데이터 축소 회귀 테스트 |
 
 문서:
 
@@ -53,6 +53,7 @@ Pi에서 화면 없이 audio 상태를 확인할 때:
 - `docs/QT_CPP_TO_AVALONIA_PORTING.md`: Qt/C++에서 Avalonia/.NET으로 전환한 과정
 - `docs/ARCHITECTURE_PRESENTATION.md`: 발표용 아키텍처 개선 정리
 - `docs/ARCHITECTURE_REVIEW_FIXES.md`: 아키텍처 리뷰 반영 내역
+- `docs/source-notes/`: 초기 포팅/계약/리뷰 원문 기록
 
 기술 매핑: Qt Widgets→Avalonia, QCustomPlot→ScottPlot.Avalonia, Qt Multimedia→플랫폼별
 audio backend(Windows는 NAudio WaveInEvent, Linux/Pi는 PipeWire `pw-record` + ALSA `arecord` fallback), QImage→PixelBuffer(ARGB32)→WriteableBitmap,
@@ -67,7 +68,7 @@ CI는 `dotnet restore --locked-mode`, Release build, test, generated/edge WAV ve
 Windows publish와 publish smoke를 수행한다.
 
 Windows publish artifact는 현재 framework-dependent(`--self-contained false`)이다. 실행 환경에는
-.NET 8 Desktop Runtime이 필요하다. 외부 배포용으로 런타임 설치 전제를 없애려면 self-contained
+.NET 8 Runtime이 필요하다. 외부 배포용으로 런타임 설치 전제를 없애려면 self-contained
 publish artifact를 별도로 만든다.
 
 ## 스플래시 리소스

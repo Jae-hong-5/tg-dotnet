@@ -29,19 +29,7 @@ internal sealed class RunCommandService
         try
         {
             RunCommandMode mode = _operations.CurrentMode;
-            if (mode == RunCommandMode.Live)
-            {
-                _operations.ConfigureLiveAudio();
-                started = await _operations.StartLiveAsync();
-            }
-            else if (mode == RunCommandMode.Playback)
-            {
-                started = await _operations.StartPlaybackAsync();
-            }
-            else if (mode == RunCommandMode.Simulation)
-            {
-                started = await _operations.StartSimulationAsync();
-            }
+            started = await StartModeAsync(mode);
         }
         catch (Exception ex)
         {
@@ -101,18 +89,7 @@ internal sealed class RunCommandService
         RunCommandStopOutcome outcome = RunCommandStopOutcome.Stopped;
         RunCommandMode mode = _operations.CurrentMode;
 
-        if (mode == RunCommandMode.Live)
-        {
-            outcome = Combine(outcome, _operations.StopLive());
-        }
-        else if (mode == RunCommandMode.Playback)
-        {
-            outcome = Combine(outcome, _operations.StopPlayback());
-        }
-        else if (mode == RunCommandMode.Simulation)
-        {
-            outcome = Combine(outcome, _operations.StopSimulation());
-        }
+        outcome = Combine(outcome, StopMode(mode));
 
         bool audioClosed = outcome == RunCommandStopOutcome.Stopped && _operations.CloseAudio();
         if (outcome != RunCommandStopOutcome.Stopped || !audioClosed)
@@ -126,13 +103,46 @@ internal sealed class RunCommandService
         }
 
         _operations.InvalidateRunSession();
-        if (mode == RunCommandMode.Playback || mode == RunCommandMode.Simulation)
+        if (ShouldRestoreAudioState(mode))
         {
             _operations.RestorePlaybackOrSimulationAudioState();
         }
 
         SetStopped();
         _viewModel.StatusText = "Stopped";
+    }
+
+    private Task<bool> StartModeAsync(RunCommandMode mode)
+    {
+        return mode switch
+        {
+            RunCommandMode.Live => StartLiveModeAsync(),
+            RunCommandMode.Playback => _operations.StartPlaybackAsync(),
+            RunCommandMode.Simulation => _operations.StartSimulationAsync(),
+            _ => Task.FromResult(false),
+        };
+    }
+
+    private Task<bool> StartLiveModeAsync()
+    {
+        _operations.ConfigureLiveAudio();
+        return _operations.StartLiveAsync();
+    }
+
+    private RunCommandStopOutcome StopMode(RunCommandMode mode)
+    {
+        return mode switch
+        {
+            RunCommandMode.Live => _operations.StopLive(),
+            RunCommandMode.Playback => _operations.StopPlayback(),
+            RunCommandMode.Simulation => _operations.StopSimulation(),
+            _ => RunCommandStopOutcome.Stopped,
+        };
+    }
+
+    private static bool ShouldRestoreAudioState(RunCommandMode mode)
+    {
+        return mode is RunCommandMode.Playback or RunCommandMode.Simulation;
     }
 
     private void SetStarting()

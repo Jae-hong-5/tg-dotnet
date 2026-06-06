@@ -11,6 +11,7 @@ internal sealed class LinuxLiveAudioWorker : ILiveAudioWorker
 {
     private const int ReplacementStopTimeoutMs = 2000;
     private const int StartupFailureProbeTimeoutMs = 250;
+    private static readonly TimeSpan CommandProbeTimeout = TimeSpan.FromSeconds(2);
     private const int Channels = MasterAudioBuffer.Channels;
     private const int AlsaDeviceNumberBase = 1_000_000;
     private const int AlsaDeviceNumberStride = 1_000;
@@ -453,7 +454,12 @@ internal sealed class LinuxLiveAudioWorker : ILiveAudioWorker
         }
     }
 
-    private static string RunCommand(string fileName, string argument)
+    private static string RunCommand(string fileName, params string[] arguments)
+    {
+        return RunCommand(fileName, CommandProbeTimeout, arguments);
+    }
+
+    internal static string RunCommand(string fileName, TimeSpan timeout, params string[] arguments)
     {
         try
         {
@@ -467,19 +473,46 @@ internal sealed class LinuxLiveAudioWorker : ILiveAudioWorker
                     UseShellExecute = false,
                 },
             };
-            process.StartInfo.ArgumentList.Add(argument);
+            foreach (string argument in arguments)
+            {
+                process.StartInfo.ArgumentList.Add(argument);
+            }
+
             if (!process.Start())
             {
                 return "";
             }
 
-            string output = process.StandardOutput.ReadToEnd();
-            process.WaitForExit(2000);
+            Task<string> outputTask = process.StandardOutput.ReadToEndAsync();
+            Task<string> errorTask = process.StandardError.ReadToEndAsync();
+            if (!process.WaitForExit(timeout))
+            {
+                TryKillProcessTree(process);
+                return "";
+            }
+
+            string output = outputTask.GetAwaiter().GetResult();
+            _ = errorTask.GetAwaiter().GetResult();
             return process.ExitCode == 0 ? output : "";
         }
         catch
         {
             return "";
+        }
+    }
+
+    private static void TryKillProcessTree(Process process)
+    {
+        try
+        {
+            if (!process.HasExited)
+            {
+                process.Kill(entireProcessTree: true);
+            }
+        }
+        catch
+        {
+            // Device probing is best-effort; callers fall back to no devices.
         }
     }
 

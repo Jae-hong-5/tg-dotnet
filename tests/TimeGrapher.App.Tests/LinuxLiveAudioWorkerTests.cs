@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using TimeGrapher.App.Audio;
 using Xunit;
 
@@ -99,6 +100,33 @@ card 4: CA7 [Cubilux CA7], device 0: USB Audio [USB Audio]
         IReadOnlyList<LiveAudioDevice> devices = LinuxLiveAudioWorker.ParseAlsaCaptureDevices(arecordList);
 
         Assert.Empty(devices);
+    }
+
+    [Fact]
+    public void RunCommand_ReturnsOutputForSuccessfulProcess()
+    {
+        string output = LinuxLiveAudioWorker.RunCommand(
+            "cmd.exe",
+            TimeSpan.FromSeconds(2),
+            "/c",
+            "echo ok");
+
+        Assert.Equal("ok", output.Trim());
+    }
+
+    [Fact]
+    public void RunCommand_ReturnsEmptyWhenProcessExceedsTimeout()
+    {
+        Stopwatch stopwatch = Stopwatch.StartNew();
+
+        string output = LinuxLiveAudioWorker.RunCommand(
+            "cmd.exe",
+            TimeSpan.FromMilliseconds(200),
+            "/c",
+            "ping 127.0.0.1 -n 6 > nul & echo done");
+
+        Assert.Equal("", output);
+        Assert.True(stopwatch.Elapsed < TimeSpan.FromSeconds(2));
     }
 
     [Fact]

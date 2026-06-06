@@ -57,7 +57,7 @@
 | Qt Widgets | Avalonia XAML과 C# 코드 |
 | QCustomPlot | ScottPlot.Avalonia와 전용 렌더링 코드 |
 | Qt Multimedia | Windows는 NAudio, Pi/Linux는 PipeWire와 ALSA 실행 |
-| QThread와 signal | 전용 worker thread, 이벤트, UI Dispatcher |
+| QThread와 signal | 백그라운드 작업, 이벤트, 화면 주 스레드 전달 |
 | QImage | PixelBuffer와 WriteableBitmap |
 | C++ 검출/계산 코드 | `TimeGrapher.Core`의 C# 계산 코드 |
 | Qt 동영상 스플래시 | MP4에서 뽑은 PNG 122장을 24fps로 재생 |
@@ -68,13 +68,13 @@
 
 시계 틱을 분석하는 핵심은 UI가 아니라 계산 로직이다. 그래서 다음 기능을 `TimeGrapher.Core`로 옮겼다.
 
-- BPH 검출
-- rate, beat error, amplitude 계산
+- 시간당 박동 수(BPH) 검출
+- 하루 오차, 틱/톡 간격 차이, 진폭 계산
 - rolling average와 least squares 계산
 - WAV 읽기/쓰기
-- sound print 이미지 생성
+- 소리 이미지 생성
 - 합성 시계 신호 생성
-- 분석 worker
+- 분석 작업
 
 Core가 UI와 플랫폼을 모르게 만든 덕분에, Windows GUI 없이도 샘플 WAV를 분석하고 테스트할 수 있다.
 
@@ -108,21 +108,21 @@ Raspberry Pi와 Linux에서는 외부 명령을 이용한다.
 
 ## 스레드 구조를 바꾼 이유
 
-원본 Qt 앱에도 worker 개념이 있었고, .NET 쪽에서도 그 생각을 유지했다.
+원본 Qt 앱에도 백그라운드 작업 개념이 있었고, .NET 쪽에서도 그 생각을 유지했다.
 
 현재 흐름은 다음과 같다.
 
 ```text
 오디오 입력 / WAV / 시뮬레이터
         ↓
-분석 worker
+분석 작업
         ↓
 검출 결과와 화면용 데이터
         ↓
-Avalonia UI thread
+Avalonia 화면 주 스레드
 ```
 
-UI thread는 버튼, 탭, 그래프 표시를 담당한다. 오디오 분석, 검출, 이미지 계산은 worker 쪽에서 처리한다. 이 경계를 지키면 Raspberry Pi처럼 성능 여유가 적은 환경에서도 화면이 덜 밀린다.
+화면 주 스레드는 버튼, 탭, 그래프 표시를 담당한다. 오디오 분석, 검출, 이미지 계산은 백그라운드 작업에서 처리한다. 이 경계를 지키면 Raspberry Pi처럼 성능 여유가 적은 환경에서도 화면이 덜 밀린다.
 
 ## Raspberry Pi 대응
 

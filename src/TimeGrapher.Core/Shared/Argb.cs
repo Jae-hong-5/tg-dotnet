@@ -16,7 +16,7 @@ public static class Argb
     // Qt global color equivalents used by the original code.
     public const uint White = 0xFFFFFFFF;
     public const uint Black = 0xFF000000;
-    public const uint Red   = 0xFFFF0000; // Qt::red
+    public const uint Red = 0xFFFF0000; // Qt::red
     public const uint Green = 0xFF00FF00; // Qt::green
-    public const uint Blue  = 0xFF0000FF; // Qt::blue
+    public const uint Blue = 0xFF0000FF; // Qt::blue
 }

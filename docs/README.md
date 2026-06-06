@@ -1,6 +1,6 @@
 # TimeGrapherNet Docs
 
-문서는 두 종류로 나눈다.
+문서는 세 종류로 나눈다.
 
 ## 발표/설명용
 
@@ -17,12 +17,14 @@
   - 아키텍처 리뷰 후 실제 수정한 항목
   - 어떤 문제가 있었고 어떤 코드 방향으로 해결했는지 정리한다
 
-부모 폴더 `D:\tg_cld\`에도 초기 포팅 기록 문서가 있다.
+## 원본 작업 기록
 
-- `00_DotNet_Porting.md`: 초기 포팅 세션 기록과 현재 상태 업데이트
-- `00_PORTING_PLAN.md`: 초기 구현 계약 기록
-- `01_ARCHITECTURE_CHANGES.md`: 반영된 구조 변경 기록
-- `02_ARCHITECTURE_REVIEW_FIXES.md`: 리뷰 반영 기록과 최신 검증 요약
+초기 포팅과 리뷰 작업의 원문 기록은 `source-notes/`에 번호 순서대로 보관한다.
+
+- `source-notes/00_DotNet_Porting.md`: 초기 포팅 세션 기록과 현재 상태 업데이트
+- `source-notes/01_PORTING_PLAN.md`: 초기 구현 계약 기록
+- `source-notes/02_ARCHITECTURE_CHANGES.md`: 반영된 구조 변경 기록
+- `source-notes/03_ARCHITECTURE_REVIEW_FIXES.md`: 리뷰 반영 기록과 최신 검증 요약
 
 ## 빠른 설명
 
