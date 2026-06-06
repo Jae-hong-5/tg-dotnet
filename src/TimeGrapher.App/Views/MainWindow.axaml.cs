@@ -11,6 +11,7 @@ using Avalonia.Threading;
 
 using TimeGrapher.App;
 using TimeGrapher.App.Audio;
+using TimeGrapher.App.Diagnostics;
 using TimeGrapher.App.Rendering;
 using TimeGrapher.App.Services;
 using TimeGrapher.App.Tabs;
@@ -34,26 +35,19 @@ public partial class MainWindow : Window
     private const int ERROR_RATE_X_DATA_POINTS = 250;
     private const int DEFAULT_SOUND_IMAGE_WIDTH = 1019;
     private const int DEFAULT_SOUND_IMAGE_HEIGHT = 654;
-    private const int WORKER_STOP_TIMEOUT_MS = 2000;
     private const string PLAYBACK_OR_SIM_PCM = "Playback/Sim";
 
     private const string PREF_NAME_WELSHI = "Welshi USB";
     private const string PREF_NAME_CHINESE_GENERIC = "Chinese Generic USB";
 
-    private enum StopOutcome
+    private static RunSessionStopOutcome CombineStopOutcome(RunSessionStopOutcome left, RunSessionStopOutcome right)
     {
-        Stopped,
-        Stopping,
-    }
-
-    private static StopOutcome CombineStopOutcome(StopOutcome left, StopOutcome right)
-    {
-        if (left == StopOutcome.Stopping || right == StopOutcome.Stopping)
+        if (left == RunSessionStopOutcome.Stopping || right == RunSessionStopOutcome.Stopping)
         {
-            return StopOutcome.Stopping;
+            return RunSessionStopOutcome.Stopping;
         }
 
-        return StopOutcome.Stopped;
+        return RunSessionStopOutcome.Stopped;
     }
 
     // RenameAudioDevices[][2]: { match-substring, preferred-display-name }.
@@ -91,9 +85,6 @@ public partial class MainWindow : Window
     private AnalysisFrameRouter mFrameRouter = null!;
     private AnalysisFrameRenderScheduler mFrameRenderScheduler = null!;
     private InfoTabRegistry mInfoTabRegistry = null!;
-    private MasterAudioBuffer? mRawAudio;
-    private AnalysisWorker? mAnalysisWorker;
-    private IAudioInputWorker? mInputWorker;
     private readonly int[] mAvailableRates = new int[5];
     private int mNumberOfRates;
     private string mCurrentDir;
@@ -106,16 +97,13 @@ public partial class MainWindow : Window
     private double mForegroundLastFPS;
     private double mForegroundLastSPF;
     private double mForegroundLastSPS;
-    private ulong mAnalysisSessionId;
-    private ulong mRunSessionToken;
     private AnalysisFrame? mLastAnalysisFrame;
-    private Action? mInputDataReadyHandler;
-    private Action? mInputCompletionDetach;
     private bool mIsClosing;
     private readonly MainWindowViewModel mViewModel;
     private readonly MainWindowSelectionCoordinator mSelectionCoordinator;
     private readonly RunSelectionResolver mRunSelectionResolver;
     private readonly RunCommandService mRunCommandService;
+    private readonly RunSessionController mRunSessionController;
 
     // Parallel to InputDeviceComboBox items: device number for live devices, -1 for "Playback/Sim".
     private readonly List<int> mInputDeviceNumbers = new();
@@ -138,10 +126,19 @@ public partial class MainWindow : Window
             AveragingPeriodList,
             BphCatalog.ManualAutoBph,
             BphCatalog.ManualBph);
-        mDialogs = new MainWindowDialogService(this);
+        mDialogs = RenderBenchOptions.Current is null
+            ? new MainWindowDialogService(this)
+            : new RenderBenchDialogService();
         mRecordingSessionService = new RecordingSessionService(mDialogs, new QueuedRecordingWriterFactory());
         mPlaybackFileService = new PlaybackFileService(mDialogs);
         mRunCommandService = new RunCommandService(mViewModel, new RunCommandOperations(this));
+        mRunSessionController = new RunSessionController(
+            sessionId => BuildRunSettings().ToWorkerConfig(sessionId, mWavWriter),
+            Reset,
+            ClearPendingAnalysisFrames,
+            () => mFrameRenderScheduler.ResetTiming(),
+            OnAnalysisFrameReady,
+            status => mViewModel.StatusText = status);
         DataContext = mViewModel;
 
         // Default working directory: current dir, then ../../samples if it exists (MainWindow ctor).
@@ -182,6 +179,11 @@ public partial class MainWindow : Window
         SetGuiStopMode();
 
         Closed += OnWindowClosed;
+
+        if (RenderBenchOptions.Current is { } benchOptions)
+        {
+            AttachRenderBench(benchOptions);
+        }
     }
 
     // AnalysisFrameReady fires on the analysis thread; marshal to UI thread.
@@ -198,7 +200,7 @@ public partial class MainWindow : Window
 
     private void HandleAnalysisFrame(AnalysisFrame frame, ulong droppedFrames)
     {
-        if (frame.SessionId != mAnalysisSessionId)
+        if (frame.SessionId != mRunSessionController.AnalysisSessionId)
         {
             return;
         }
@@ -282,7 +284,7 @@ public partial class MainWindow : Window
         mFrameRenderScheduler.Reset();
 
         AnalysisFrame? frame = mLastAnalysisFrame;
-        if (frame != null && frame.SessionId == mAnalysisSessionId)
+        if (frame != null && frame.SessionId == mRunSessionController.AnalysisSessionId)
         {
             mGraphFrameRenderer.UpdateResults(frame);
             mFrameRouter.Route(frame, ActiveInfoTabId(), BuildTabRenderContext());

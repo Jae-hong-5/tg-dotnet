@@ -31,5 +31,6 @@
 TimeGrapherNet의 핵심 변화는 다음 세 가지다.
 
 1. 분석 로직을 Core로 분리해 UI와 플랫폼에서 떼어냈다.
-2. UI는 모든 화면을 무리하게 그리지 않고 최신 결과 중심으로 안정적으로 표시한다.
-3. Windows와 Raspberry Pi에서 실행할 수 있도록 플랫폼 입력과 배포 검증을 분리했다.
+2. Windows/Pi 입력 구현을 각각 platform 프로젝트로 분리하고 Core의 live-audio 계약 뒤에 둔다.
+3. UI는 모든 화면을 무리하게 그리지 않고 최신 결과 중심으로 안정적으로 표시한다.
+4. Windows와 Raspberry Pi에서 실행할 수 있도록 RID별 publish 검증을 분리했다.

@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 
-using TimeGrapher.App.Audio;
 using TimeGrapher.App.Services;
 
 namespace TimeGrapher.App.Views;
@@ -37,10 +36,7 @@ public partial class MainWindow
 
         public void SetAudioInputVolume(float normalizedVolume)
         {
-            if (_owner.mInputWorker is ILiveAudioWorker liveWorker)
-            {
-                liveWorker.SetVolume(normalizedVolume);
-            }
+            _owner.mRunSessionController.SetLiveInputVolume(normalizedVolume);
         }
     }
 }

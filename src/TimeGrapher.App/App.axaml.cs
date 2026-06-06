@@ -20,6 +20,13 @@ public partial class App : Application
 
     private static void ShowStartupWindow(IClassicDesktopStyleApplicationLifetime desktop)
     {
+        if (Diagnostics.RenderBenchOptions.Current != null)
+        {
+            // Render benchmark: skip the splash so measurement starts deterministically.
+            desktop.MainWindow = new Views.MainWindow();
+            return;
+        }
+
         Views.SplashWindow splashWindow;
         try
         {

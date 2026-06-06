@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>TimeGrapher.Platform.LinuxAudio</RootNamespace>
+    <AssemblyName>TimeGrapher.Platform.LinuxAudio</AssemblyName>
+    <RuntimeIdentifiers>linux-arm64</RuntimeIdentifiers>
+    <RestorePackagesWithLockFile>false</RestorePackagesWithLockFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TimeGrapher.Core\TimeGrapher.Core.csproj" />
+  </ItemGroup>
+
+</Project>

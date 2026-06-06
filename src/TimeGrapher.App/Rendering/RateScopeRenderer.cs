@@ -204,7 +204,7 @@ internal sealed class RateScopeRenderer
         }
     }
 
-    private static GraphSeriesFrame? FindSeries(List<GraphSeriesFrame> seriesList, string id)
+    private static GraphSeriesFrame? FindSeries(IReadOnlyList<GraphSeriesFrame> seriesList, string id)
     {
         foreach (GraphSeriesFrame series in seriesList)
         {

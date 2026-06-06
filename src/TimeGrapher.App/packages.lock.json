@@ -264,6 +264,12 @@
       "timegrapher.core": {
         "type": "Project"
       },
+      "timegrapher.platform.linuxaudio": {
+        "type": "Project",
+        "dependencies": {
+          "TimeGrapher.Core": "[1.0.0, )"
+        }
+      },
       "timegrapher.platform.windowsaudio": {
         "type": "Project",
         "dependencies": {

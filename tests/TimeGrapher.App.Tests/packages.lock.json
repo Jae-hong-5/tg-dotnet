@@ -307,12 +307,19 @@
           "Avalonia.Themes.Fluent": "[11.3.2, )",
           "ScottPlot.Avalonia": "[5.0.55, )",
           "TimeGrapher.Core": "[1.0.0, )",
+          "TimeGrapher.Platform.LinuxAudio": "[1.0.0, )",
           "TimeGrapher.Platform.WindowsAudio": "[1.0.0, )",
           "Tmds.DBus.Protocol": "[0.21.3, )"
         }
       },
       "timegrapher.core": {
         "type": "Project"
+      },
+      "timegrapher.platform.linuxaudio": {
+        "type": "Project",
+        "dependencies": {
+          "TimeGrapher.Core": "[1.0.0, )"
+        }
       },
       "timegrapher.platform.windowsaudio": {
         "type": "Project",

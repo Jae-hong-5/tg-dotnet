@@ -152,7 +152,11 @@ public sealed class AnalysisFrameContractTests
         Assert.True(read.InputOverrun);
         Assert.Equal<ulong>(5, read.InputSamplesDropped);
         Assert.Equal(5, destination[0]);
-        Assert.Equal<ulong>((ulong)destination.Length, buffer.AnalysisLastTotalSamplesWritten - read.InputSamplesDropped);
+
+        var nextDestination = new float[1];
+        MasterAudioBufferReadResult nextRead = buffer.CopyAnalysisSamples(nextDestination, snapshot.TotalSamplesWritten);
+        Assert.Equal(1, nextRead.SamplesCopied);
+        Assert.Equal(21, nextDestination[0]);
     }
 
     [Fact]

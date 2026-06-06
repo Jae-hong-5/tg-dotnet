@@ -6,7 +6,6 @@ using Avalonia.Threading;
 
 using TimeGrapher.App.Audio;
 using TimeGrapher.App.Services;
-using TimeGrapher.Core.Analysis;
 using TimeGrapher.Core.AudioIo;
 using TimeGrapher.Core.Shared;
 using TimeGrapher.Core.Sim;
@@ -20,29 +19,15 @@ public partial class MainWindow
         // ~MainWindow: StopAnalysisThread(); plus stop any running input worker.
         mIsClosing = true;
         mViewModel.PropertyChanged -= mSelectionCoordinator.OnViewModelPropertyChanged;
-        InvalidateRunSession();
-        StopInputWorker("Input");
-        StopAnalysisThread();
+        mRunSessionController.InvalidateRunSession();
+        mRunSessionController.StopInputWorker("Input");
+        mRunSessionController.StopAnalysisThread();
         AudioCloseCheck();
-    }
-
-    private ulong BeginRunSession()
-    {
-        unchecked
-        {
-            mRunSessionToken++;
-            if (mRunSessionToken == 0)
-            {
-                mRunSessionToken = 1;
-            }
-
-            return mRunSessionToken;
-        }
     }
 
     private void InvalidateRunSession()
     {
-        _ = BeginRunSession();
+        mRunSessionController.InvalidateRunSession();
     }
 
     private void StartAudioThread()
@@ -53,53 +38,27 @@ public partial class MainWindow
             throw new InvalidOperationException("No live audio device is selected.");
         }
 
-        MasterAudioBuffer buffer = PrepareInputRun(out ulong runSessionToken);
+        MasterAudioBuffer buffer = mRunSessionController.PrepareInputRun(mCurrentSamplesPerSecond, out ulong runSessionToken);
 
         ILiveAudioWorker audioWorker = LiveAudioBackend.CreateWorker(buffer);
-        AttachInputWorker(audioWorker, runSessionToken);
+        mRunSessionController.AttachInputWorker(audioWorker, runSessionToken);
         audioWorker.Start(deviceNumber, mCurrentSamplesPerSecond, (float)(mViewModel.Gain / 1000.0));
     }
 
-    private StopOutcome StopAudioThread()
+    private RunSessionStopOutcome StopAudioThread()
     {
         // LocalStopAudio -> StopAudioRecording.
-        return StopInputWorker("Audio");
-    }
-
-    private StopOutcome StopInputWorker(string workerName)
-    {
-        IAudioInputWorker? worker = mInputWorker;
-        if (worker != null)
-        {
-            if (mInputDataReadyHandler != null)
-            {
-                worker.DataReady -= mInputDataReadyHandler;
-                mInputDataReadyHandler = null;
-            }
-
-            if (!worker.TryStop(TimeSpan.FromMilliseconds(WORKER_STOP_TIMEOUT_MS)))
-            {
-                mViewModel.StatusText = workerName + " worker did not stop within timeout";
-                return StopOutcome.Stopping;
-            }
-
-            mInputCompletionDetach?.Invoke();
-            mInputCompletionDetach = null;
-            worker.Dispose();
-            mInputWorker = null;
-        }
-
-        return StopOutcome.Stopped;
+        return mRunSessionController.StopInputWorker("Audio");
     }
 
     private void StartPlaybackThread(string fileName)
     {
-        MasterAudioBuffer buffer = PrepareInputRun(out ulong runSessionToken);
+        MasterAudioBuffer buffer = mRunSessionController.PrepareInputRun(mCurrentSamplesPerSecond, out ulong runSessionToken);
 
         var playbackWorker = new PlaybackWorker(buffer, mCurrentSamplesPerSecond);
         Action<PlaybackCompletionReason> doneHandler = reason => OnPlaybackDoneReadingFile(runSessionToken, reason);
         playbackWorker.DoneReadingFile += doneHandler;
-        AttachInputWorker(playbackWorker, runSessionToken, () => playbackWorker.DoneReadingFile -= doneHandler);
+        mRunSessionController.AttachInputWorker(playbackWorker, runSessionToken, () => playbackWorker.DoneReadingFile -= doneHandler);
         if (!playbackWorker.Start(fileName))
         {
             throw new InvalidOperationException("Playback worker is already running.");
@@ -108,112 +67,28 @@ public partial class MainWindow
 
     private void StartSimThread(WatchSynthStreamConfig cfg)
     {
-        MasterAudioBuffer buffer = PrepareInputRun(out ulong runSessionToken);
+        MasterAudioBuffer buffer = mRunSessionController.PrepareInputRun(mCurrentSamplesPerSecond, out ulong runSessionToken);
 
         var simWorker = new SimWorker(buffer, mCurrentSamplesPerSecond);
         Action<SimCompletionReason> doneHandler = reason => OnSimDone(runSessionToken, reason);
         simWorker.SimDone += doneHandler;
-        AttachInputWorker(simWorker, runSessionToken, () => simWorker.SimDone -= doneHandler);
+        mRunSessionController.AttachInputWorker(simWorker, runSessionToken, () => simWorker.SimDone -= doneHandler);
         if (!simWorker.Start(cfg))
         {
             throw new InvalidOperationException("Sim worker is already running.");
         }
     }
 
-    private StopOutcome StopPlaybackThread()
+    private RunSessionStopOutcome StopPlaybackThread()
     {
         // requestInterruption(): cancel; the worker reports completion via DoneReadingFile,
         // but on_StopPushButton_clicked also calls StopAnalysisThread()/AudioCloseCheck() directly.
-        return StopInputWorker("Playback");
+        return mRunSessionController.StopInputWorker("Playback");
     }
 
-    private StopOutcome StopSimThread()
+    private RunSessionStopOutcome StopSimThread()
     {
-        return StopInputWorker("Sim");
-    }
-
-    private MasterAudioBuffer PrepareInputRun(out ulong runSessionToken)
-    {
-        runSessionToken = BeginRunSession();
-        StopAnalysisThread();
-        Reset();
-
-        // Recreate the master buffer at the current sample rate before analysis starts.
-        var buffer = new MasterAudioBuffer(mCurrentSamplesPerSecond);
-        mRawAudio = buffer;
-        StartAnalysisThread();
-
-        return buffer;
-    }
-
-    private void StartAnalysisThread()
-    {
-        mAnalysisSessionId++;
-
-        AnalysisWorker.Config analysisConfig = BuildRunSettings().ToWorkerConfig(mAnalysisSessionId, mWavWriter);
-
-        mAnalysisWorker = new AnalysisWorker(mRawAudio!, analysisConfig);
-        mAnalysisWorker.AnalysisFrameReady += OnAnalysisFrameReady;
-        mAnalysisWorker.Start();
-    }
-
-    private StopOutcome StopAnalysisThread(bool completeInput = false)
-    {
-        if (mAnalysisWorker != null)
-        {
-            bool stopped = completeInput
-                ? mAnalysisWorker.CompleteInput(TimeSpan.FromMilliseconds(WORKER_STOP_TIMEOUT_MS))
-                : mAnalysisWorker.TryStop(TimeSpan.FromMilliseconds(WORKER_STOP_TIMEOUT_MS));
-            if (stopped)
-            {
-                mAnalysisWorker.AnalysisFrameReady -= OnAnalysisFrameReady;
-                mAnalysisWorker.Dispose();
-                mAnalysisWorker = null;
-                if (completeInput)
-                {
-                    mFrameRenderScheduler.ResetTiming();
-                }
-                else
-                {
-                    mAnalysisSessionId++;
-                    ClearPendingAnalysisFrames();
-                }
-            }
-            else
-            {
-                mViewModel.StatusText = "Analysis worker did not stop within timeout";
-                return StopOutcome.Stopping;
-            }
-        }
-        else
-        {
-            ClearPendingAnalysisFrames();
-        }
-
-        return StopOutcome.Stopped;
-    }
-
-    // Input worker DataReady (any thread) -> analysis worker. Safe from any thread.
-    private Action CreateDataReadyHandler(ulong runSessionToken)
-    {
-        return () =>
-        {
-            if (runSessionToken == mRunSessionToken)
-            {
-                mAnalysisWorker?.NotifyDataReady();
-            }
-        };
-    }
-
-    private void AttachInputWorker(
-        IAudioInputWorker worker,
-        ulong runSessionToken,
-        Action? detachCompletion = null)
-    {
-        mInputWorker = worker;
-        mInputCompletionDetach = detachCompletion;
-        mInputDataReadyHandler = CreateDataReadyHandler(runSessionToken);
-        worker.DataReady += mInputDataReadyHandler;
+        return mRunSessionController.StopInputWorker("Sim");
     }
 
     private void OnPlaybackDoneReadingFile(ulong runSessionToken, PlaybackCompletionReason reason)
@@ -232,7 +107,7 @@ public partial class MainWindow
         CompletePlaybackOrSimulationRun(
             runSessionToken,
             shouldRestoreAudioState: CurrentModeText() == ModeStrings[PLAYBACK],
-            stopInputWorker: () => StopInputWorker("Playback"),
+            stopInputWorker: () => mRunSessionController.StopInputWorker("Playback"),
             failureStatus: "Playback failed",
             failed: reason == PlaybackCompletionReason.Failed);
     }
@@ -242,7 +117,7 @@ public partial class MainWindow
         CompletePlaybackOrSimulationRun(
             runSessionToken,
             shouldRestoreAudioState: CurrentModeText() == ModeStrings[SIM],
-            stopInputWorker: () => StopInputWorker("Sim"),
+            stopInputWorker: () => mRunSessionController.StopInputWorker("Sim"),
             failureStatus: "Simulation failed",
             failed: reason == SimCompletionReason.Failed);
     }
@@ -250,11 +125,11 @@ public partial class MainWindow
     private void CompletePlaybackOrSimulationRun(
         ulong runSessionToken,
         bool shouldRestoreAudioState,
-        Func<StopOutcome> stopInputWorker,
+        Func<RunSessionStopOutcome> stopInputWorker,
         string failureStatus,
         bool failed)
     {
-        if (runSessionToken != mRunSessionToken)
+        if (!mRunSessionController.IsCurrentRunSession(runSessionToken))
         {
             return;
         }
@@ -266,10 +141,10 @@ public partial class MainWindow
             RestorePlaybackOrSimulationAudioState();
         }
 
-        StopOutcome outcome = stopInputWorker();
-        outcome = CombineStopOutcome(outcome, StopAnalysisThread(completeInput: true));
-        bool audioClosed = outcome == StopOutcome.Stopped && AudioCloseCheck();
-        if (outcome != StopOutcome.Stopped || !audioClosed)
+        RunSessionStopOutcome outcome = stopInputWorker();
+        outcome = CombineStopOutcome(outcome, mRunSessionController.StopAnalysisThread(completeInput: true));
+        bool audioClosed = outcome == RunSessionStopOutcome.Stopped && AudioCloseCheck();
+        if (outcome != RunSessionStopOutcome.Stopped || !audioClosed)
         {
             SetGuiStoppingMode();
             return;
@@ -350,8 +225,8 @@ public partial class MainWindow
         catch (Exception ex)
         {
             InvalidateRunSession();
-            StopInputWorker("Audio");
-            StopAnalysisThread();
+            mRunSessionController.StopInputWorker("Audio");
+            mRunSessionController.StopAnalysisThread();
             AudioCloseCheck();
             mViewModel.StatusText = "Failed to start live audio";
             await mDialogs.ShowErrorAsync("Error", "Failed to start live audio: " + ex.Message);
@@ -454,7 +329,7 @@ public partial class MainWindow
 
     private void SetWorkersPaused(bool paused)
     {
-        mInputWorker?.SetPaused(paused);
+        mRunSessionController.SetWorkersPaused(paused);
     }
 
     private void StopRun()
