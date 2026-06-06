@@ -11,6 +11,14 @@
   - 듣는 사람이 이해할 수 있게 만든 발표 준비 문서
   - 문제, 해결 방향, 검증 결과를 짧게 설명한다
 
+## 과제 제출용 (Risk / Experiments)
+
+- `RISK_ASSESSMENT.md`
+  - 팀 Risk Assessment 문서에 합칠 추가 항목 (R-A2: RPi5 렌더링 성능)
+- `PLANNED_EXPERIMENTS.md`
+  - technical-experiment-template을 따른 실험 계획
+  - 실험 1: RPi5 렌더링 백엔드 성능 A/B 측정 (R-A2 검증용 spike)
+
 ## 작업 기록/근거용
 
 - `ARCHITECTURE_REVIEW_FIXES.md`
