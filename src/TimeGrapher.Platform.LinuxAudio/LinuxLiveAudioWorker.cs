@@ -26,6 +26,7 @@ public sealed class LinuxLiveAudioWorker : ILiveAudioWorker
     private readonly MasterAudioBuffer _rawAudio;
     private readonly Stopwatch _timer = new();
     private readonly StringBuilder _stderr = new();
+    private readonly object _stderrLock = new();
 
     private Process? _process;
     private Thread? _stdoutThread;
@@ -38,6 +39,7 @@ public sealed class LinuxLiveAudioWorker : ILiveAudioWorker
     private PcmSampleFormat _sampleFormat = PcmSampleFormat.Float32LittleEndian;
     private string _processErrorPrefix = "pw-record";
     private volatile bool _paused;
+    private volatile bool _stopRequested;
 
     public LinuxLiveAudioWorker(MasterAudioBuffer buffer)
     {
@@ -46,6 +48,8 @@ public sealed class LinuxLiveAudioWorker : ILiveAudioWorker
     }
 
     public event Action? DataReady;
+
+    public event Action? CaptureEnded;
 
     public bool IsPaused => _paused;
 
@@ -222,13 +226,31 @@ public sealed class LinuxLiveAudioWorker : ILiveAudioWorker
         StartProcess(startInfo, PcmSampleFormat.Int16LittleEndian, "arecord");
     }
 
-    private void StartProcess(ProcessStartInfo startInfo, PcmSampleFormat sampleFormat, string processName)
+    /// <summary>Test hook: drives the real StartProcess path with an arbitrary child process.</summary>
+    internal void StartCaptureProcessForTests(ProcessStartInfo startInfo, int startupProbeTimeoutMs = StartupFailureProbeTimeoutMs)
+    {
+        startInfo.RedirectStandardOutput = true;
+        startInfo.RedirectStandardError = true;
+        startInfo.UseShellExecute = false;
+        StartProcess(startInfo, PcmSampleFormat.Int16LittleEndian, startInfo.FileName, startupProbeTimeoutMs);
+    }
+
+    private void StartProcess(
+        ProcessStartInfo startInfo,
+        PcmSampleFormat sampleFormat,
+        string processName,
+        int startupProbeTimeoutMs = StartupFailureProbeTimeoutMs)
     {
         Process process = Process.Start(startInfo)
             ?? throw new InvalidOperationException("Failed to start " + processName + ".");
 
         _process = process;
-        _stderr.Clear();
+        _stopRequested = false;
+        lock (_stderrLock)
+        {
+            _stderr.Clear();
+        }
+
         _sampleFormat = sampleFormat;
         _processErrorPrefix = processName;
         _stdoutThread = new Thread(() => ReadPcm(process))
@@ -244,13 +266,19 @@ public sealed class LinuxLiveAudioWorker : ILiveAudioWorker
         _stdoutThread.Start();
         _stderrThread.Start();
 
-        if (process.WaitForExit(StartupFailureProbeTimeoutMs))
+        if (process.WaitForExit(startupProbeTimeoutMs))
         {
-            string error = _stderr.ToString().Trim();
+            // Join the readers before touching _stderr so the stderr thread is done appending.
             _stdoutThread?.Join(TimeSpan.FromMilliseconds(250));
             _stderrThread?.Join(TimeSpan.FromMilliseconds(250));
             _stdoutThread = null;
             _stderrThread = null;
+            string error;
+            lock (_stderrLock)
+            {
+                error = _stderr.ToString().Trim();
+            }
+
             process.Dispose();
             _process = null;
             throw new InvalidOperationException(
@@ -270,6 +298,7 @@ public sealed class LinuxLiveAudioWorker : ILiveAudioWorker
 
     public bool TryStop(TimeSpan timeout)
     {
+        _stopRequested = true;
         _paused = false;
         Process? process = Interlocked.Exchange(ref _process, null);
         if (process == null)
@@ -283,26 +312,34 @@ public sealed class LinuxLiveAudioWorker : ILiveAudioWorker
             {
                 process.Kill(entireProcessTree: true);
             }
-
-            if (timeout == Timeout.InfiniteTimeSpan)
-            {
-                process.WaitForExit();
-            }
-            else if (!process.WaitForExit(timeout))
-            {
-                return false;
-            }
-
-            _stdoutThread?.Join(TimeSpan.FromMilliseconds(250));
-            _stderrThread?.Join(TimeSpan.FromMilliseconds(250));
-            _stdoutThread = null;
-            _stderrThread = null;
-            return true;
         }
-        finally
+        catch (InvalidOperationException)
         {
-            process.Dispose();
+            // The process exited between the HasExited check and Kill.
         }
+
+        if (timeout == Timeout.InfiniteTimeSpan)
+        {
+            process.WaitForExit();
+        }
+        else if (!process.WaitForExit(timeout))
+        {
+            // Keep the process and reader threads so a later stop attempt can
+            // re-wait and finish teardown instead of disposing a live process.
+            if (Interlocked.CompareExchange(ref _process, process, null) != null)
+            {
+                process.Dispose();
+            }
+
+            return false;
+        }
+
+        _stdoutThread?.Join(TimeSpan.FromMilliseconds(250));
+        _stderrThread?.Join(TimeSpan.FromMilliseconds(250));
+        _stdoutThread = null;
+        _stderrThread = null;
+        process.Dispose();
+        return true;
     }
 
     public void Dispose()
@@ -325,7 +362,7 @@ public sealed class LinuxLiveAudioWorker : ILiveAudioWorker
                 int read = stream.Read(readBuffer, 0, readBuffer.Length);
                 if (read <= 0)
                 {
-                    return;
+                    break;
                 }
 
                 int offset = 0;
@@ -368,6 +405,13 @@ public sealed class LinuxLiveAudioWorker : ILiveAudioWorker
         catch (IOException)
         {
         }
+
+        // The capture stream ended. If no stop was requested and this is still the
+        // active process (not a torn-down or replaced one), the capture died on us.
+        if (!_stopRequested && ReferenceEquals(Volatile.Read(ref _process), process))
+        {
+            CaptureEnded?.Invoke();
+        }
     }
 
     private void ReadStderr(Process process)
@@ -382,9 +426,12 @@ public sealed class LinuxLiveAudioWorker : ILiveAudioWorker
                     return;
                 }
 
-                if (_stderr.Length < 4096)
+                lock (_stderrLock)
                 {
-                    _stderr.AppendLine(line);
+                    if (_stderr.Length < 4096)
+                    {
+                        _stderr.AppendLine(line);
+                    }
                 }
 
                 Console.Error.WriteLine(_processErrorPrefix + ": " + line);

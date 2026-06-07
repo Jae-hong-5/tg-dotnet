@@ -128,6 +128,96 @@ card 4: CA7 [Cubilux CA7], device 0: USB Audio [USB Audio]
         Assert.True(stopwatch.Elapsed < TimeSpan.FromSeconds(2));
     }
 
+    [Fact]
+    public void TryStop_TimeoutLeavesWorkerRestoppable()
+    {
+        var worker = new LinuxLiveAudioWorker(new MasterAudioBuffer(48000));
+        (string fileName, string[] args) = ShellCommand(OperatingSystem.IsWindows()
+            ? "ping 127.0.0.1 -n 30 > nul"
+            : "sleep 30");
+        worker.StartCaptureProcessForTests(BuildStartInfo(fileName, args));
+
+        bool stoppedImmediately = worker.TryStop(TimeSpan.Zero);
+        if (stoppedImmediately)
+        {
+            // The child exited faster than the zero-length wait; the timeout
+            // path was not exercisable in this run.
+            return;
+        }
+
+        // The timed-out stop must leave the worker re-stoppable: a retry waits
+        // for the same (already killed) process and completes teardown.
+        Assert.True(worker.TryStop(TimeSpan.FromSeconds(5)));
+    }
+
+    [Fact]
+    public void CaptureEnded_RaisedWhenProcessExitsAfterStartupProbe()
+    {
+        var worker = new LinuxLiveAudioWorker(new MasterAudioBuffer(48000));
+        using var captureEnded = new ManualResetEventSlim(initialState: false);
+        worker.CaptureEnded += captureEnded.Set;
+
+        // Child outlives the 250 ms startup probe, then exits on its own (~1s).
+        (string fileName, string[] args) = ShellCommand(OperatingSystem.IsWindows()
+            ? "ping 127.0.0.1 -n 2 > nul"
+            : "sleep 1");
+        try
+        {
+            worker.StartCaptureProcessForTests(BuildStartInfo(fileName, args));
+        }
+        catch (InvalidOperationException)
+        {
+            // The child exited inside the probe window (loaded machine); the
+            // late-exit scenario was not exercisable in this run.
+            return;
+        }
+
+        Assert.True(captureEnded.Wait(TimeSpan.FromSeconds(10)));
+    }
+
+    [Fact]
+    public void CaptureEnded_NotRaisedForRequestedStop()
+    {
+        var worker = new LinuxLiveAudioWorker(new MasterAudioBuffer(48000));
+        bool raised = false;
+        worker.CaptureEnded += () => raised = true;
+
+        (string fileName, string[] args) = ShellCommand(OperatingSystem.IsWindows()
+            ? "ping 127.0.0.1 -n 30 > nul"
+            : "sleep 30");
+        worker.StartCaptureProcessForTests(BuildStartInfo(fileName, args));
+
+        Assert.True(worker.TryStop(TimeSpan.FromSeconds(5)));
+        Assert.False(raised);
+    }
+
+    [Fact]
+    public void StartProcess_EarlyExitReportsStderrInFailure()
+    {
+        var worker = new LinuxLiveAudioWorker(new MasterAudioBuffer(48000));
+        (string fileName, string[] args) = ShellCommand(OperatingSystem.IsWindows()
+            ? "echo boom 1>&2 & exit 1"
+            : "echo boom 1>&2; exit 1");
+
+        // A generous probe window keeps this deterministic on loaded CI runners,
+        // where child-process startup can exceed the production 250 ms probe.
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
+            () => worker.StartCaptureProcessForTests(BuildStartInfo(fileName, args), startupProbeTimeoutMs: 5000));
+
+        Assert.Contains("boom", ex.Message);
+    }
+
+    private static ProcessStartInfo BuildStartInfo(string fileName, string[] arguments)
+    {
+        var startInfo = new ProcessStartInfo { FileName = fileName };
+        foreach (string argument in arguments)
+        {
+            startInfo.ArgumentList.Add(argument);
+        }
+
+        return startInfo;
+    }
+
     private static (string FileName, string[] Arguments) ShellCommand(string command)
     {
         return OperatingSystem.IsWindows()

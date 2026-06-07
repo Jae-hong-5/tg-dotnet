@@ -163,82 +163,92 @@ public sealed class PlaybackWorker : IAudioInputWorker
 
         using (file)
         {
-            file.Position = format.DataOffset;
-            long dataEnd = format.DataOffset + format.DataSize;
-
-            int numSamples = (int)((dataEnd - format.DataOffset) / sizeof(float));
-
-            while ((file.Position < dataEnd) && (numSamples > 0))
+            // Nothing may escape this dedicated thread: an unhandled exception here
+            // would terminate the process and DoneReadingFile would never fire.
+            try
             {
-                if (!_pauseGate.WaitWhilePaused(() => _interruptionRequested))
-                {
-                    reason = PlaybackCompletionReason.Cancelled;
-                    break;
-                }
+                file.Position = format.DataOffset;
+                long dataEnd = format.DataOffset + format.DataSize;
 
-                long start = _timer.ElapsedMilliseconds;
+                int numSamples = (int)((dataEnd - format.DataOffset) / sizeof(float));
 
-                int bytesToRead = (int)Math.Min(_dataInSize, dataEnd - file.Position);
-                int bytesIn = file.Read(_dataIn, 0, bytesToRead);
-                if (bytesIn < 0)
+                while ((file.Position < dataEnd) && (numSamples > 0))
                 {
-                    Console.Error.WriteLine("Read Error =" + bytesIn);
-                    reason = PlaybackCompletionReason.Failed;
-                    break;
-                }
-                else if ((bytesIn % 4) != 0)
-                {
-                    Console.Error.WriteLine("Read Error not Modulus of 4");
-                    reason = PlaybackCompletionReason.Failed;
-                    break;
-                }
-                else if (bytesIn == 0)
-                {
-                    Console.Error.WriteLine("Read Error 0");
-                    reason = PlaybackCompletionReason.Failed;
-                    break;
-                }
-                else if (_interruptionRequested)
-                {
-                    reason = PlaybackCompletionReason.Cancelled;
-                    break; // Exit loop early
-                }
+                    if (!_pauseGate.WaitWhilePaused(() => _interruptionRequested))
+                    {
+                        reason = PlaybackCompletionReason.Cancelled;
+                        break;
+                    }
 
-                int numberOfSamples = bytesIn / SampleSize;
+                    long start = _timer.ElapsedMilliseconds;
 
-                // byte[] -> float and ring-write (WriteSamples locks internally).
-                Span<float> block = _floatBlock.AsSpan(0, numberOfSamples);
-                for (int i = 0; i < numberOfSamples; i++)
-                {
-                    int bits = _dataIn[i * 4] | (_dataIn[i * 4 + 1] << 8) |
-                               (_dataIn[i * 4 + 2] << 16) | (_dataIn[i * 4 + 3] << 24);
-                    block[i] = BitConverter.Int32BitsToSingle(bits);
+                    int bytesToRead = (int)Math.Min(_dataInSize, dataEnd - file.Position);
+                    int bytesIn = file.Read(_dataIn, 0, bytesToRead);
+                    if (bytesIn < 0)
+                    {
+                        Console.Error.WriteLine("Read Error =" + bytesIn);
+                        reason = PlaybackCompletionReason.Failed;
+                        break;
+                    }
+                    else if ((bytesIn % 4) != 0)
+                    {
+                        Console.Error.WriteLine("Read Error not Modulus of 4");
+                        reason = PlaybackCompletionReason.Failed;
+                        break;
+                    }
+                    else if (bytesIn == 0)
+                    {
+                        Console.Error.WriteLine("Read Error 0");
+                        reason = PlaybackCompletionReason.Failed;
+                        break;
+                    }
+                    else if (_interruptionRequested)
+                    {
+                        reason = PlaybackCompletionReason.Cancelled;
+                        break; // Exit loop early
+                    }
+
+                    int numberOfSamples = bytesIn / SampleSize;
+
+                    // byte[] -> float and ring-write (WriteSamples locks internally).
+                    Span<float> block = _floatBlock.AsSpan(0, numberOfSamples);
+                    for (int i = 0; i < numberOfSamples; i++)
+                    {
+                        int bits = _dataIn[i * 4] | (_dataIn[i * 4 + 1] << 8) |
+                                   (_dataIn[i * 4 + 2] << 16) | (_dataIn[i * 4 + 3] << 24);
+                        block[i] = BitConverter.Int32BitsToSingle(bits);
+                    }
+                    _rawAudio.WriteSamples(block);
+
+                    DataReady?.Invoke();
+
+                    ++_frameCount;
+                    _sampleCount += (ulong)numberOfSamples;
+                    numSamples -= numberOfSamples;
+                    double currentTime = _timer.ElapsedMilliseconds / 1000.0;
+                    if (currentTime - _lastTime > 2) // average fps over 2 seconds
+                    {
+                        double fdelta = currentTime - _lastTime;
+                        double fps = _frameCount / fdelta;
+                        double sps = _sampleCount / fdelta;
+                        // Original: mSampleCount/mFrameCount with both uint64_t -> integer division.
+                        double spf = _sampleCount / _frameCount;
+                        _rawAudio.SetStats(fps, spf, sps);
+                        _lastTime = currentTime;
+                        _frameCount = 0;
+                        _sampleCount = 0;
+                    }
+
+                    long delta = (_timer.ElapsedMilliseconds - start) + DelayFugeTimeMs;
+                    long sleepTime = PlaybackSamplePeriodMsec - delta;
+                    if (sleepTime < 0) sleepTime = 0;
+                    Thread.Sleep((int)sleepTime);
                 }
-                _rawAudio.WriteSamples(block);
-
-                DataReady?.Invoke();
-
-                ++_frameCount;
-                _sampleCount += (ulong)numberOfSamples;
-                numSamples -= numberOfSamples;
-                double currentTime = _timer.ElapsedMilliseconds / 1000.0;
-                if (currentTime - _lastTime > 2) // average fps over 2 seconds
-                {
-                    double fdelta = currentTime - _lastTime;
-                    double fps = _frameCount / fdelta;
-                    double sps = _sampleCount / fdelta;
-                    // Original: mSampleCount/mFrameCount with both uint64_t -> integer division.
-                    double spf = _sampleCount / _frameCount;
-                    _rawAudio.SetStats(fps, spf, sps);
-                    _lastTime = currentTime;
-                    _frameCount = 0;
-                    _sampleCount = 0;
-                }
-
-                long delta = (_timer.ElapsedMilliseconds - start) + DelayFugeTimeMs;
-                long sleepTime = PlaybackSamplePeriodMsec - delta;
-                if (sleepTime < 0) sleepTime = 0;
-                Thread.Sleep((int)sleepTime);
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine("Playback read failed: " + ex.Message);
+                reason = PlaybackCompletionReason.Failed;
             }
         }
 
