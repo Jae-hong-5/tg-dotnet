@@ -125,6 +125,7 @@ public sealed class RecordingSessionServiceTests
         public int OpenedChannels { get; private set; }
         public bool Disposed { get; private set; }
         public ulong DroppedBlocks => 0;
+        public bool IsOpen => false;
 
         public bool Open(string filePath, int sampleRate, int channels)
         {

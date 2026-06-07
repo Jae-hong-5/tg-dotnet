@@ -78,14 +78,17 @@ internal sealed class RunCommandService
 
     public void Stop()
     {
-        if (_startInProgress || _operations.IsClosing ||
-            _viewModel.RunState is RunUiState.Stopped or RunUiState.Stopping)
+        // Stopping is allowed through so a failed/timed-out stop can be retried.
+        if (_startInProgress || _operations.IsClosing || _viewModel.RunState == RunUiState.Stopped)
         {
             return;
         }
 
         _operations.SetWorkersPaused(false);
         SetStopping();
+        // Set before StopMode/CloseAudio so their detailed failure messages win,
+        // and stale throughput text never survives a failed stop.
+        _viewModel.StatusText = "Stopping";
         RunCommandStopOutcome outcome = RunCommandStopOutcome.Stopped;
         RunCommandMode mode = _operations.CurrentMode;
 
@@ -95,10 +98,6 @@ internal sealed class RunCommandService
         if (outcome != RunCommandStopOutcome.Stopped || !audioClosed)
         {
             SetStopping();
-            if (_viewModel.StatusText == "Running" || _viewModel.StatusText == "Starting")
-            {
-                _viewModel.StatusText = "Stopping";
-            }
             return;
         }
 

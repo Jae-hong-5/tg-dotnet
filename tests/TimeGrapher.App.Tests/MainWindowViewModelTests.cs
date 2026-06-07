@@ -73,7 +73,9 @@ public sealed class MainWindowViewModelTests
 
         Assert.False(vm.IsPauseEnabled);
         Assert.False(vm.IsPlayPauseEnabled);
-        Assert.False(vm.IsStopEnabled);
+        // Stop stays enabled in Stopping so a failed/timed-out stop can be retried.
+        Assert.True(vm.IsStopEnabled);
+        Assert.True(vm.StopCommand.CanExecute(null));
         Assert.False(vm.AreRunParametersEnabled);
         Assert.Equal("Pause", vm.PauseButtonText);
         Assert.True(vm.IsPauseButtonShowingPause);

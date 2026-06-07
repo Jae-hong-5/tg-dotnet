@@ -190,6 +190,102 @@ public sealed class RunCommandServiceTests
         Assert.Equal(0, operations.InvalidateRunSessionCalls);
     }
 
+    [Fact]
+    public void StopOverwritesThroughputStatusWithStopping()
+    {
+        MainWindowViewModel vm = CreateViewModel();
+        vm.SetRunning();
+        vm.StatusText = "Backgroud Audio Thread Average - FPS: 12.3";
+        var operations = new FakeRunCommandOperations
+        {
+            CurrentMode = RunCommandMode.Live,
+            StopLiveOutcome = RunCommandStopOutcome.Stopping,
+        };
+        var service = new RunCommandService(vm, operations);
+
+        service.Stop();
+
+        Assert.Equal(RunUiState.Stopping, vm.RunState);
+        Assert.Equal("Stopping", vm.StatusText);
+    }
+
+    [Fact]
+    public void StopRetryAfterWorkerTimeoutCompletesStop()
+    {
+        MainWindowViewModel vm = CreateViewModel();
+        vm.SetRunning();
+        vm.StatusText = "Running";
+        var operations = new FakeRunCommandOperations
+        {
+            CurrentMode = RunCommandMode.Live,
+            StopLiveOutcome = RunCommandStopOutcome.Stopping,
+        };
+        var service = new RunCommandService(vm, operations);
+
+        service.Stop();
+
+        Assert.Equal(RunUiState.Stopping, vm.RunState);
+        Assert.True(vm.IsStopEnabled);
+        Assert.Equal(0, operations.CloseAudioCalls);
+
+        operations.StopLiveOutcome = RunCommandStopOutcome.Stopped;
+        service.Stop();
+
+        Assert.Equal(RunUiState.Stopped, vm.RunState);
+        Assert.Equal("Stopped", vm.StatusText);
+        // The retry re-issues StopMode; re-issuing must remain safe (idempotent).
+        Assert.Equal(2, operations.StopLiveCalls);
+        Assert.Equal(1, operations.CloseAudioCalls);
+        Assert.Equal(1, operations.InvalidateRunSessionCalls);
+    }
+
+    [Fact]
+    public void StopRetryAfterFailedAudioCloseRetriesClose()
+    {
+        MainWindowViewModel vm = CreateViewModel();
+        vm.SetRunning();
+        vm.StatusText = "Running";
+        var operations = new FakeRunCommandOperations
+        {
+            CurrentMode = RunCommandMode.Live,
+            CloseAudioResult = false,
+        };
+        var service = new RunCommandService(vm, operations);
+
+        service.Stop();
+
+        Assert.Equal(RunUiState.Stopping, vm.RunState);
+        Assert.True(vm.IsStopEnabled);
+        Assert.Equal(1, operations.CloseAudioCalls);
+        Assert.Equal(0, operations.InvalidateRunSessionCalls);
+
+        operations.CloseAudioResult = true;
+        service.Stop();
+
+        Assert.Equal(RunUiState.Stopped, vm.RunState);
+        Assert.Equal("Stopped", vm.StatusText);
+        // The retry re-issues StopMode; re-issuing must remain safe (idempotent).
+        Assert.Equal(2, operations.StopLiveCalls);
+        Assert.Equal(2, operations.CloseAudioCalls);
+        Assert.Equal(1, operations.InvalidateRunSessionCalls);
+    }
+
+    [Fact]
+    public void StopIgnoresRequestWhenAlreadyStopped()
+    {
+        MainWindowViewModel vm = CreateViewModel();
+        var operations = new FakeRunCommandOperations
+        {
+            CurrentMode = RunCommandMode.Live,
+        };
+        var service = new RunCommandService(vm, operations);
+
+        service.Stop();
+
+        Assert.Empty(operations.Calls);
+        Assert.Equal(RunUiState.Stopped, vm.RunState);
+    }
+
     private static MainWindowViewModel CreateViewModel()
     {
         return new MainWindowViewModel(
@@ -226,6 +322,8 @@ public sealed class RunCommandServiceTests
         public RunCommandStopOutcome StopSimulationOutcome { get; set; } = RunCommandStopOutcome.Stopped;
 
         public bool CloseAudioResult { get; set; } = true;
+
+        public int StopLiveCalls { get; private set; }
 
         public int StopPlaybackCalls { get; private set; }
 
@@ -281,6 +379,7 @@ public sealed class RunCommandServiceTests
         public RunCommandStopOutcome StopLive()
         {
             Calls.Add("StopLive");
+            StopLiveCalls++;
             return StopLiveOutcome;
         }
 
