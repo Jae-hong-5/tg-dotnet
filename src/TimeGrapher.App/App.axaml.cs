@@ -1,7 +1,6 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
-using Avalonia.Threading;
 
 namespace TimeGrapher.App;
 
@@ -55,10 +54,10 @@ public partial class App : Application
             splashWindow.Close();
         }
 
-        splashWindow.Opened += (_, _) =>
-        {
-            Dispatcher.UIThread.Post(PrepareMainWindow, DispatcherPriority.Background);
-        };
+        // MainWindow is built when playback completes (inside SwitchToMainWindow):
+        // constructing it during playback blocks the UI thread for hundreds of ms and
+        // visibly freezes the animation. The last splash frame lingering briefly while
+        // the main window builds is far less noticeable than a mid-animation stall.
         splashWindow.PlaybackCompleted += (_, _) => SwitchToMainWindow();
         desktop.MainWindow = splashWindow;
     }

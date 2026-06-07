@@ -17,6 +17,11 @@ public partial class SplashWindow : Window
     // Bounded read-ahead: ~11 MB of decoded 640x360 frames instead of ~112 MB for all 122.
     private const int DecodeAheadFrames = 12;
     private static readonly TimeSpan FrameInterval = TimeSpan.FromSeconds(1.0 / FramesPerSecond);
+    // Tick faster than the frame rate: Windows quantizes dispatcher timers up to the
+    // next 15.625 ms system tick, so a 33 ms interval actually fires every ~47 ms and
+    // skips every other frame. ~15.6 ms ticks catch each 33.3 ms frame boundary within
+    // half a frame; ShowFrame no-ops when the frame is unchanged.
+    private static readonly TimeSpan TickInterval = TimeSpan.FromMilliseconds(10);
     private static readonly TimeSpan PlaybackDuration = TimeSpan.FromSeconds((double)FrameCount / FramesPerSecond);
 
     private readonly Bitmap?[] mFrames = new Bitmap?[FrameCount];
@@ -38,7 +43,7 @@ public partial class SplashWindow : Window
         // the rest stream in on a background thread inside a bounded window.
         mFrames[0] = LoadFrame(1);
 
-        mTimer = new DispatcherTimer { Interval = FrameInterval };
+        mTimer = new DispatcherTimer { Interval = TickInterval };
         mTimer.Tick += OnTimerTick;
 
         Opened += OnOpened;
