@@ -125,7 +125,7 @@ public partial class SplashWindow : Window
         {
             lock (mFrameLock)
             {
-                while (!mDecodeStopRequested && frameNumber - mDisplayedFrameNumber > DecodeAheadFrames)
+                while (!mDecodeStopRequested && frameNumber - DecodeWindowBase() > DecodeAheadFrames)
                 {
                     Monitor.Wait(mFrameLock, TimeSpan.FromMilliseconds(250));
                 }
@@ -134,6 +134,8 @@ public partial class SplashWindow : Window
                 {
                     return;
                 }
+
+                ReclaimSkippedFrames();
             }
 
             Bitmap frame;
@@ -166,6 +168,37 @@ public partial class SplashWindow : Window
 
                 mFrames[frameNumber - 1] = frame;
             }
+        }
+    }
+
+    /// <summary>
+    /// Anchor the decode-ahead window to the playback clock, not just the displayed
+    /// frame: while the UI thread is stalled (e.g. MainWindow construction behind the
+    /// splash) the displayed frame stops advancing, and a display-anchored decoder
+    /// would stall too, forcing a juddery capped catch-up after the stall. Following
+    /// the clock keeps the post-stall target frame already decoded so the animation
+    /// jumps straight back onto the timeline. (Reading a running Stopwatch from the
+    /// decode thread is a benign race — a slightly stale value only shrinks the window.)
+    /// </summary>
+    private int DecodeWindowBase()
+    {
+        return Math.Max(mDisplayedFrameNumber, GetFrameNumberForElapsed(mPlaybackClock.Elapsed));
+    }
+
+    /// <summary>
+    /// While the UI thread is stalled the clock-anchored decoder keeps producing, but
+    /// frames between the frozen displayed frame and the clock will never be shown —
+    /// the next ShowFrame jumps straight to the clock frame. Reclaim them here so a
+    /// long stall cannot accumulate undisplayed bitmaps (keeps the ~12-frame memory
+    /// bound). Must be called under mFrameLock; never touches the displayed frame.
+    /// </summary>
+    private void ReclaimSkippedFrames()
+    {
+        int clockFrameNumber = GetFrameNumberForElapsed(mPlaybackClock.Elapsed);
+        for (int frameNumber = mDisplayedFrameNumber + 1; frameNumber < clockFrameNumber; frameNumber++)
+        {
+            mFrames[frameNumber - 1]?.Dispose();
+            mFrames[frameNumber - 1] = null;
         }
     }
 
