@@ -86,7 +86,8 @@ internal sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public bool IsPlayPauseEnabled => _runState is RunUiState.Stopped or RunUiState.Running or RunUiState.Paused;
 
-    public bool IsStopEnabled => _runState is RunUiState.Running or RunUiState.Paused;
+    // Stopping stays enabled so a failed/timed-out stop can be retried instead of wedging the UI.
+    public bool IsStopEnabled => _runState is RunUiState.Running or RunUiState.Paused or RunUiState.Stopping;
 
     public bool IsSampleRateEnabled => AreRunParametersEnabled && _modeAllowsSampleRate;
 

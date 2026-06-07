@@ -22,7 +22,14 @@ public partial class MainWindow
         mRunSessionController.InvalidateRunSession();
         mRunSessionController.StopInputWorker("Input");
         mRunSessionController.StopAnalysisThread();
-        AudioCloseCheck();
+        if (!AudioCloseCheck() && mWavWriter != null)
+        {
+            // Final shutdown: the retry surface is gone with the window, so give the
+            // recording one last bounded close attempt (Dispose re-runs Close with
+            // its 5s join) and release it regardless.
+            mWavWriter.Dispose();
+            mWavWriter = null;
+        }
     }
 
     private void InvalidateRunSession()
@@ -41,8 +48,30 @@ public partial class MainWindow
         MasterAudioBuffer buffer = mRunSessionController.PrepareInputRun(mCurrentSamplesPerSecond, out ulong runSessionToken);
 
         ILiveAudioWorker audioWorker = LiveAudioBackend.CreateWorker(buffer);
-        mRunSessionController.AttachInputWorker(audioWorker, runSessionToken);
+        Action captureEndedHandler = () => OnLiveCaptureEnded(runSessionToken);
+        audioWorker.CaptureEnded += captureEndedHandler;
+        mRunSessionController.AttachInputWorker(audioWorker, runSessionToken, () => audioWorker.CaptureEnded -= captureEndedHandler);
         audioWorker.Start(deviceNumber, mCurrentSamplesPerSecond, (float)(mViewModel.Gain / 1000.0));
+    }
+
+    private void OnLiveCaptureEnded(ulong runSessionToken)
+    {
+        // Fires on the capture thread; marshal to the UI thread.
+        Dispatcher.UIThread.Post(() => HandleLiveCaptureEnded(runSessionToken));
+    }
+
+    private void HandleLiveCaptureEnded(ulong runSessionToken)
+    {
+        if (!mRunSessionController.IsCurrentRunSession(runSessionToken))
+        {
+            return;
+        }
+
+        // The capture process/device died without a stop request: bring the run
+        // down through the normal stop path, then surface what happened (after
+        // StopRun so the message survives the "Stopped" status).
+        StopRun();
+        mViewModel.StatusText = "Live audio capture ended unexpectedly";
     }
 
     private RunSessionStopOutcome StopAudioThread()
@@ -156,6 +185,12 @@ public partial class MainWindow
 
     private async Task<bool> RecordSessionCheck()
     {
+        // A writer left over from a failed close must never leak into a new run.
+        if (!AudioCloseCheck())
+        {
+            return false;
+        }
+
         RecordingSessionStartResult result = await mRecordingSessionService.TryStartAsync(mCurrentSamplesPerSecond);
         if (result.Writer != null)
         {
@@ -174,6 +209,18 @@ public partial class MainWindow
             if (!closed)
             {
                 mViewModel.StatusText = "Failed to close WAV recording cleanly";
+                if (mWavWriter.IsOpen)
+                {
+                    // Retryable: the writer thread has not finished yet; a Stop
+                    // retry re-attempts the close.
+                    return false;
+                }
+
+                // Terminal: the writer already tore down, so a retry has nothing
+                // left to redo. Release it now so no stale writer can leak into a
+                // later run; the failure still surfaces once via the status text.
+                mWavWriter.Dispose();
+                mWavWriter = null;
                 return false;
             }
 
@@ -264,6 +311,7 @@ public partial class MainWindow
         if (!SetAudioRate(selection.SampleRate))
         {
             Console.Error.WriteLine("SetAudioRate Failed");
+            RestorePlaybackOrSimulationAudioState();
             return false;
         }
 

@@ -13,6 +13,8 @@ internal sealed class QueuedRecordingWriter : IRecordingWriter
 
     public ulong DroppedBlocks => _inner.DroppedBlocks;
 
+    public bool IsOpen => _inner.IsOpen;
+
     public bool Open(string filePath, int sampleRate, int channels) => _inner.Open(filePath, sampleRate, channels);
 
     public bool Write(ReadOnlySpan<float> samples) => _inner.Write(samples);
