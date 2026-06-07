@@ -21,8 +21,13 @@ public sealed class AudioCaptureWorker : ILiveAudioWorker
     private readonly MasterAudioBuffer _rawAudio;
 
     private WaveInEvent? _audioInput;
+    // Teardown thread from a timed-out stop attempt; retries must join this same
+    // teardown instead of reporting success on the already-cleared _audioInput.
+    // Start/Stop are serialized on the UI thread, so a plain field suffices.
+    private Thread? _pendingStopThread;
     private float _volume = 1.0f;
     private volatile bool _paused;
+    private volatile bool _stopRequested;
 
     // 2-second statistics state (mirrors AudioWorker.cpp).
     private bool _timerStarted;
@@ -33,6 +38,9 @@ public sealed class AudioCaptureWorker : ILiveAudioWorker
 
     /// <summary>Raised on the capture callback thread after each block is written.</summary>
     public event Action? DataReady;
+
+    /// <summary>Raised when capture ends without a stop request (device error/unplug).</summary>
+    public event Action? CaptureEnded;
 
     public bool IsPaused => _paused;
 
@@ -54,6 +62,8 @@ public sealed class AudioCaptureWorker : ILiveAudioWorker
     {
         _volume = volume;
         _paused = false;
+        // Suppress CaptureEnded from any replaced device while swapping inputs.
+        _stopRequested = true;
 
         if (_audioInput != null)
         {
@@ -71,6 +81,8 @@ public sealed class AudioCaptureWorker : ILiveAudioWorker
             BufferMilliseconds = 20,
         };
         _audioInput.DataAvailable += OnDataAvailable;
+        _audioInput.RecordingStopped += OnRecordingStopped;
+        _stopRequested = false;
         _audioInput.StartRecording();
     }
 
@@ -147,17 +159,50 @@ public sealed class AudioCaptureWorker : ILiveAudioWorker
         _ = TryStop(Timeout.InfiniteTimeSpan);
     }
 
+    private void OnRecordingStopped(object? sender, StoppedEventArgs e)
+    {
+        if (e.Exception != null)
+        {
+            Console.Error.WriteLine("AudioCaptureWorker: recording stopped: " + e.Exception.Message);
+        }
+
+        if (!_stopRequested)
+        {
+            CaptureEnded?.Invoke();
+        }
+    }
+
     public bool TryStop(TimeSpan timeout)
     {
+        _stopRequested = true;
         _paused = false;
+
+        // A previous stop attempt timed out: wait for that same teardown to finish.
+        Thread? pendingStop = _pendingStopThread;
+        if (pendingStop != null)
+        {
+            if (timeout == Timeout.InfiniteTimeSpan)
+            {
+                pendingStop.Join();
+            }
+            else if (!pendingStop.Join(timeout))
+            {
+                return false;
+            }
+
+            _pendingStopThread = null;
+            // Fall through: also stop any capture started since the timed-out stop.
+        }
+
         WaveInEvent? audioInput = Interlocked.Exchange(ref _audioInput, null);
         if (audioInput == null)
         {
             return true;
         }
 
-        // Detach the callback first so no further DataReady fires after Stop().
+        // Detach the callbacks first so no further DataReady/CaptureEnded fires after Stop().
         audioInput.DataAvailable -= OnDataAvailable;
+        audioInput.RecordingStopped -= OnRecordingStopped;
 
         if (timeout == Timeout.InfiniteTimeSpan)
         {
@@ -165,7 +210,9 @@ public sealed class AudioCaptureWorker : ILiveAudioWorker
             return true;
         }
 
-        Exception? error = null;
+        // The result is purely join-based: a teardown exception is logged on the
+        // stop thread (the callback is already detached, so there is nothing a
+        // retry could do beyond waiting for the thread to finish).
         var stopThread = new Thread(() =>
         {
             try
@@ -174,7 +221,7 @@ public sealed class AudioCaptureWorker : ILiveAudioWorker
             }
             catch (Exception ex)
             {
-                error = ex;
+                Console.Error.WriteLine("AudioCaptureWorker: stop failed: " + ex.Message);
             }
         })
         {
@@ -185,12 +232,7 @@ public sealed class AudioCaptureWorker : ILiveAudioWorker
 
         if (!stopThread.Join(timeout))
         {
-            return false;
-        }
-
-        if (error != null)
-        {
-            Console.Error.WriteLine("AudioCaptureWorker: stop failed: " + error.Message);
+            _pendingStopThread = stopThread;
             return false;
         }
 
@@ -230,7 +272,13 @@ public sealed class AudioCaptureWorker : ILiveAudioWorker
 
     private static void StopAndDispose(WaveInEvent audioInput)
     {
-        audioInput.StopRecording();
-        audioInput.Dispose();
+        try
+        {
+            audioInput.StopRecording();
+        }
+        finally
+        {
+            audioInput.Dispose();
+        }
     }
 }
