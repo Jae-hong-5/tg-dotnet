@@ -29,6 +29,7 @@ public sealed class AnalysisWorker : IDisposable
         public int SoundImageWidth = 0;
         public int SoundImageHeight = 0;
         public int ScopeSnapshotPointBudget = 8000;
+        public uint SoundImageBackgroundColor = 0xFFFFFFFFu;
         public ISampleWriter? SampleWriter = null;
     }
 
@@ -52,6 +53,11 @@ public sealed class AnalysisWorker : IDisposable
     private readonly AutoResetEvent _wakeup = new(false);
     private volatile bool _stopRequested = false;
     private volatile bool _completionRequested = false;
+
+    // Theme recolor request from another thread (e.g. UI theme toggle); applied on
+    // the analysis thread between frames so it never races the pixel buffer.
+    private readonly object _recolorLock = new();
+    private uint? _pendingSoundBackground;
 
     /// <summary>Raised on the analysis thread when a frame is ready.</summary>
     public event Action<AnalysisFrame>? AnalysisFrameReady;
@@ -77,7 +83,8 @@ public sealed class AnalysisWorker : IDisposable
         _soundPrintProjector = new SoundPrintFrameProjector(
             config.SampleRate,
             config.SoundImageWidth,
-            config.SoundImageHeight);
+            config.SoundImageHeight,
+            config.SoundImageBackgroundColor);
     }
 
     /// <summary>Starts the analysis thread (AutoResetEvent wait loop).</summary>
@@ -101,6 +108,20 @@ public sealed class AnalysisWorker : IDisposable
     /// <summary>Signal that new audio is available. Callable from any thread.</summary>
     public void NotifyDataReady()
     {
+        _wakeup.Set();
+    }
+
+    /// <summary>
+    /// Request a sound-print background recolor (e.g. on UI theme toggle). The change
+    /// is applied on the analysis thread and an updated image frame is published.
+    /// Callable from any thread.
+    /// </summary>
+    public void SetSoundBackgroundColor(uint backgroundColor)
+    {
+        lock (_recolorLock)
+        {
+            _pendingSoundBackground = backgroundColor;
+        }
         _wakeup.Set();
     }
 
@@ -163,8 +184,30 @@ public sealed class AnalysisWorker : IDisposable
             {
                 break;
             }
+            ApplyPendingRecolor();
             HandleInputData();
         }
+    }
+
+    private void ApplyPendingRecolor()
+    {
+        uint background;
+        lock (_recolorLock)
+        {
+            if (_pendingSoundBackground is not uint pending)
+            {
+                return;
+            }
+            background = pending;
+            _pendingSoundBackground = null;
+        }
+
+        // Re-tint on the analysis thread (safe: same thread that writes the pixel
+        // buffer) and flag the image for republish. The next regular frame carries
+        // the new colors — within ~one frame while streaming. We deliberately do NOT
+        // publish a standalone frame here: a frame with no scope series / zero stats
+        // would become the "last frame" and blank the rate/scope plots on tab switch.
+        _soundPrintProjector.SetBackgroundColor(background);
     }
 
     public void HandleInputData()

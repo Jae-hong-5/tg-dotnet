@@ -25,6 +25,7 @@ internal sealed class MainWindowViewModel : INotifyPropertyChanged
     private bool _modeAllowsSampleRate = true;
     private bool _modeAllowsGain = true;
     private string _statusText = "";
+    private bool _isAwaitingBeatSync;
     private double _gain = 100.0;
     private int _selectedInputDeviceIndex = -1;
     private int _selectedSampleRateIndex = -1;
@@ -123,6 +124,13 @@ internal sealed class MainWindowViewModel : INotifyPropertyChanged
             _statusText = value;
             OnPropertyChanged();
         }
+    }
+
+    /// <summary>True while a run is active but the detector has not yet locked the beat.</summary>
+    public bool IsAwaitingBeatSync
+    {
+        get => _isAwaitingBeatSync;
+        set => SetProperty(ref _isAwaitingBeatSync, value);
     }
 
     public double Gain

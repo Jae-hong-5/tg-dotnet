@@ -1,3 +1,4 @@
+using TimeGrapher.App.Rendering;
 using TimeGrapher.Core.Analysis;
 using TimeGrapher.Core.AudioIo;
 
@@ -30,6 +31,8 @@ internal sealed record AnalysisRunSettings(
             SoundImageWidth = SoundImageWidth,
             SoundImageHeight = SoundImageHeight,
             ScopeSnapshotPointBudget = ScopeSnapshotPointBudget,
+            // Sound print background follows the scope background (single source: App.axaml ScopeBgColor).
+            SoundImageBackgroundColor = PlotThemePalette.Current.ScopeBg,
             SampleWriter = sampleWriter,
         };
     }

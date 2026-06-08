@@ -155,6 +155,12 @@ internal sealed class RunSessionController : IDisposable
         }
     }
 
+    /// <summary>Recolors the running analysis worker's sound print (no-op when idle).</summary>
+    public void SetSoundBackgroundColor(uint backgroundColor)
+    {
+        _analysisWorker?.SetSoundBackgroundColor(backgroundColor);
+    }
+
     public void Dispose()
     {
         InvalidateRunSession();

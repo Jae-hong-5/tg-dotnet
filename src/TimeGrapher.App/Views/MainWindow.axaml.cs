@@ -147,7 +147,7 @@ public partial class MainWindow : Window
         Title = "TimeGrapher";
 
         // Results->setAlignment(Qt::AlignHCenter); set in XAML.
-        mInfoTabRegistry = InfoTabRegistry.FromCatalog(GraphicsTabWidget, APP_FONT_FAMILY);
+        mInfoTabRegistry = InfoTabRegistry.FromCatalog(GraphicsTabWidget, APP_FONT_FAMILY, mViewModel);
         mGraphFrameRenderer = new GraphFrameRenderer(mInfoTabRegistry.Consumers, Results);
         mGraphFrameRenderer.ApplyTheme(CurrentPlotTheme());
         mFrameRouter = mInfoTabRegistry.CreateRouter();
@@ -221,7 +221,9 @@ public partial class MainWindow : Window
             : ThemeVariant.Dark;
 
         application.RequestedThemeVariant = nextTheme;
-        mGraphFrameRenderer.ApplyTheme(PlotThemeFor(nextTheme));
+        PlotThemePalette nextPalette = PlotThemeFor(nextTheme);
+        mGraphFrameRenderer.ApplyTheme(nextPalette);
+        mRunSessionController.SetSoundBackgroundColor(nextPalette.ScopeBg);
     }
 
     private static PlotThemePalette CurrentPlotTheme()
@@ -272,6 +274,7 @@ public partial class MainWindow : Window
         }
 
         mLastAnalysisFrame = frame;
+        mViewModel.IsAwaitingBeatSync = !frame.BeatSynced;
         mGraphFrameRenderer.UpdateResults(frame);
         mFrameRouter.Route(frame, ActiveInfoTabId(), BuildTabRenderContext(frame));
 

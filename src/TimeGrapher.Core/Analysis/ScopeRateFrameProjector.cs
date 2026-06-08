@@ -39,6 +39,7 @@ public sealed class ScopeRateFrameProjector
     public void Project(DetectorMetricsBlockUpdate update, AnalysisFrame frame)
     {
         DetectorResultSnapshot result = update.Result;
+        frame.BeatSynced = result.SyncStatus == TgSyncStatus.Synced;
         double threshold = result.OnsetThreshold;
         ulong scopeStride = (ulong)ScopeSnapshotStride();
         for (int i = 0; i < result.ProcessedPcmLen; i++)

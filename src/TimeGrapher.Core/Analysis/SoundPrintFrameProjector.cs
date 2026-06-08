@@ -16,7 +16,7 @@ public sealed class SoundPrintFrameProjector
     private bool _publishPending = true;
     private bool _hasBph;
 
-    public SoundPrintFrameProjector(int sampleRate, int width, int height)
+    public SoundPrintFrameProjector(int sampleRate, int width, int height, uint backgroundColor)
     {
         _soundImage = new PixelBuffer(width, height);
         var config = new SoundImageRenderer.Config
@@ -24,7 +24,7 @@ public sealed class SoundPrintFrameProjector
             Bph = 0.0,
             SampleRateHz = sampleRate,
             SoundColor = Argb.Rgba(255, 0, 0, 255),
-            BackgroundColor = Argb.Rgba(255, 255, 255, 255),
+            BackgroundColor = backgroundColor,
             Direction = SoundImageRenderer.VerticalTimeDirection.TopDown,
             WarmupColumns = 2,
             AnchorColumns = 12,
@@ -42,6 +42,16 @@ public sealed class SoundPrintFrameProjector
     public void ProcessSamples(ReadOnlySpan<float> block)
     {
         _soundRenderer.ProcessSamples(block);
+    }
+
+    /// <summary>
+    /// Re-tints the sound print to a new background color and flags the image for
+    /// republish on the next <see cref="AppendSnapshot"/>.
+    /// </summary>
+    public void SetBackgroundColor(uint backgroundColor)
+    {
+        _soundRenderer.Recolor(backgroundColor);
+        _publishPending = true;
     }
 
     public void Project(DetectorMetricsBlockUpdate update)

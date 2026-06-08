@@ -23,7 +23,7 @@ internal sealed class SoundPrintRenderer
         if (w > 0 && h > 0)
         {
             var blank = new PixelBuffer(w, h);
-            blank.Fill(Argb.White);
+            blank.Fill(PlotThemePalette.Current.ScopeBg);
             PixelBufferBitmap.UpdateImage(_soundImage, blank);
         }
     }
