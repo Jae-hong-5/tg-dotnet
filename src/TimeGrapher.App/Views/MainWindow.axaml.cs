@@ -232,7 +232,7 @@ public partial class MainWindow : Window
 
     private static PlotThemePalette PlotThemeFor(ThemeVariant theme)
     {
-        return theme == ThemeVariant.Dark ? PlotThemePalette.Dark : PlotThemePalette.Light;
+        return PlotThemePalette.FromResources(theme);
     }
 
     private void OnMaximizeWindowButtonClick(object? sender, RoutedEventArgs e)

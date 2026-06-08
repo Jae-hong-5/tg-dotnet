@@ -8,31 +8,49 @@
       <CornerRadius x:Key="ControlCornerRadius">0</CornerRadius>
       <CornerRadius x:Key="OverlayCornerRadius">0</CornerRadius>
 
+      <!--
+        Single source of truth for every theme color (UI chrome AND scope graphs).
+        Define each color once here; brushes derive from these Color keys, and the
+        graph renderer reads the same keys via PlotThemePalette.FromResources.
+        To recolor the app, edit only this block.
+      -->
       <ResourceDictionary.ThemeDictionaries>
         <ResourceDictionary x:Key="Light">
-          <SolidColorBrush x:Key="SurfaceBgBrush" Color="#F8F9FA" />
-          <SolidColorBrush x:Key="PanelBgBrush" Color="#FFFFFF" />
-          <SolidColorBrush x:Key="TextPrimaryBrush" Color="#1A1A1A" />
-          <SolidColorBrush x:Key="ChromeBorderBrush" Color="#C8D0D8" />
-          <SolidColorBrush x:Key="ChromeAccentBrush" Color="#C41230" />
-          <SolidColorBrush x:Key="ScopeBgBrush" Color="#F4F6F8" />
-          <SolidColorBrush x:Key="ScopeGridBrush" Color="#C8D0D8" />
+          <Color x:Key="SurfaceColor">#E2E3E4</Color>
+          <Color x:Key="PanelColor">#E2E3E4</Color>
+          <Color x:Key="TextPrimaryColor">#1A1A1A</Color>
+          <Color x:Key="ChromeBorderColor">#C8D0D8</Color>
+          <Color x:Key="ChromeAccentColor">#C41230</Color>
+          <Color x:Key="ScopeBgColor">#FFFFFF</Color>
+          <Color x:Key="ScopeGridColor">#C8D0D8</Color>
           <Color x:Key="TraceTickColor">#2C9118</Color>
           <Color x:Key="TraceTockColor">#1D8C9A</Color>
           <Color x:Key="StatusErrorColor">#D22222</Color>
+
+          <SolidColorBrush x:Key="SurfaceBgBrush" Color="{DynamicResource SurfaceColor}" />
+          <SolidColorBrush x:Key="PanelBgBrush" Color="{DynamicResource PanelColor}" />
+          <SolidColorBrush x:Key="TextPrimaryBrush" Color="{DynamicResource TextPrimaryColor}" />
+          <SolidColorBrush x:Key="ChromeBorderBrush" Color="{DynamicResource ChromeBorderColor}" />
+          <SolidColorBrush x:Key="ChromeAccentBrush" Color="{DynamicResource ChromeAccentColor}" />
         </ResourceDictionary>
 
         <ResourceDictionary x:Key="Dark">
-          <SolidColorBrush x:Key="SurfaceBgBrush" Color="#0F1419" />
-          <SolidColorBrush x:Key="PanelBgBrush" Color="#1A2027" />
-          <SolidColorBrush x:Key="TextPrimaryBrush" Color="#E6EDF3" />
-          <SolidColorBrush x:Key="ChromeBorderBrush" Color="#2A3441" />
-          <SolidColorBrush x:Key="ChromeAccentBrush" Color="#A50034" />
-          <SolidColorBrush x:Key="ScopeBgBrush" Color="#0F1419" />
-          <SolidColorBrush x:Key="ScopeGridBrush" Color="#2A3441" />
+          <Color x:Key="SurfaceColor">#1D1D1B</Color>
+          <Color x:Key="PanelColor">#1D1D1B</Color>
+          <Color x:Key="TextPrimaryColor">#E6EDF3</Color>
+          <Color x:Key="ChromeBorderColor">#2A3441</Color>
+          <Color x:Key="ChromeAccentColor">#A50034</Color>
+          <Color x:Key="ScopeBgColor">#000000</Color>
+          <Color x:Key="ScopeGridColor">#2A3441</Color>
           <Color x:Key="TraceTickColor">#5FDD45</Color>
           <Color x:Key="TraceTockColor">#5FCEDD</Color>
           <Color x:Key="StatusErrorColor">#FF5C5C</Color>
+
+          <SolidColorBrush x:Key="SurfaceBgBrush" Color="{DynamicResource SurfaceColor}" />
+          <SolidColorBrush x:Key="PanelBgBrush" Color="{DynamicResource PanelColor}" />
+          <SolidColorBrush x:Key="TextPrimaryBrush" Color="{DynamicResource TextPrimaryColor}" />
+          <SolidColorBrush x:Key="ChromeBorderBrush" Color="{DynamicResource ChromeBorderColor}" />
+          <SolidColorBrush x:Key="ChromeAccentBrush" Color="{DynamicResource ChromeAccentColor}" />
         </ResourceDictionary>
       </ResourceDictionary.ThemeDictionaries>
     </ResourceDictionary>
