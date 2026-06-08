@@ -1,7 +1,11 @@
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Data;
+using Avalonia.Layout;
 using Avalonia.Media;
 using ScottPlot.Avalonia;
 using TimeGrapher.App.Rendering;
+using TimeGrapher.App.ViewModels;
 
 namespace TimeGrapher.App.Tabs;
 
@@ -19,6 +23,7 @@ internal sealed class InfoTabRegistry
     private sealed class InfoTabFactoryContext
     {
         public required string TextFontFamily { get; init; }
+        public MainWindowViewModel? ViewModel { get; init; }
         public Image? SoundImageControl { get; set; }
     }
 
@@ -43,11 +48,11 @@ internal sealed class InfoTabRegistry
     public IReadOnlyList<IAnalysisFrameConsumer> Consumers => _consumers;
     public Image? SoundImageControl { get; }
 
-    public static InfoTabRegistry FromCatalog(TabControl tabControl, string textFontFamily)
+    public static InfoTabRegistry FromCatalog(TabControl tabControl, string textFontFamily, MainWindowViewModel? viewModel = null)
     {
         tabControl.Items.Clear();
         var registrations = new List<InfoTabRegistration>(InfoTabCatalog.All.Count);
-        var context = new InfoTabFactoryContext { TextFontFamily = textFontFamily };
+        var context = new InfoTabFactoryContext { TextFontFamily = textFontFamily, ViewModel = viewModel };
 
         foreach (InfoTabDefinition definition in InfoTabCatalog.All)
         {
@@ -138,6 +143,14 @@ internal sealed class InfoTabRegistry
         grid.Children.Add(ratePlot);
         grid.Children.Add(scopePlot);
 
+        // "Waiting for beat sync" overlay sits over the rate-error plot (the scope
+        // below already shows the live waveform before sync).
+        if (CreateWaitingOverlay(context.ViewModel) is { } overlay)
+        {
+            Grid.SetRow(overlay, 0);
+            grid.Children.Add(overlay);
+        }
+
         var renderer = new RateScopeRenderer(scopePlot, ratePlot, context.TextFontFamily);
         var consumer = new RateScopeFrameConsumer(renderer);
         return new InfoTabRegistration(definition, CreateTabItem(definition, grid), consumer);
@@ -153,11 +166,38 @@ internal sealed class InfoTabRegistry
         };
         var grid = new Grid();
         grid.Children.Add(image);
+        if (CreateWaitingOverlay(context.ViewModel) is { } overlay)
+        {
+            grid.Children.Add(overlay);
+        }
         context.SoundImageControl = image;
 
         var renderer = new SoundPrintRenderer(image);
         var consumer = new SoundPrintFrameConsumer(renderer);
         return new InfoTabRegistration(definition, CreateTabItem(definition, grid), consumer);
+    }
+
+    // Centered "waiting for beat sync" label, shown while a run has not yet locked the
+    // tick/tock beat. Foreground/font come from the global TextBlock style (themed).
+    private static TextBlock? CreateWaitingOverlay(MainWindowViewModel? viewModel)
+    {
+        if (viewModel == null)
+        {
+            return null;
+        }
+
+        var overlay = new TextBlock
+        {
+            Text = "Waiting for tick-tock sync…",
+            FontSize = 16,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            IsHitTestVisible = false,
+        };
+        overlay.Bind(
+            Visual.IsVisibleProperty,
+            new Binding(nameof(MainWindowViewModel.IsAwaitingBeatSync)) { Source = viewModel });
+        return overlay;
     }
 
     private static TabItem CreateTabItem(InfoTabDefinition definition, Control content)

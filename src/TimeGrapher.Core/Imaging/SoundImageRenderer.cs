@@ -411,6 +411,42 @@ public sealed class SoundImageRenderer
         _cfg.BackgroundColor = color;
     }
 
+    /// <summary>
+    /// Re-tints the whole image to a new background color, rebuilding every stored
+    /// column from the retained intensity bins. Cheap (one small bitmap) and meant to
+    /// be called between frames on the rendering thread. Wave/marker colors are kept.
+    /// </summary>
+    public void Recolor(uint backgroundColor)
+    {
+        _cfg.BackgroundColor = backgroundColor;
+        if (_image == null)
+        {
+            return;
+        }
+
+        for (int x = 0; x < _width; ++x)
+        {
+            ClearColumn(x, _cfg.BackgroundColor);
+        }
+
+        for (int x = 0; x < _width; ++x)
+        {
+            RenderedColumn meta = _renderedColumns[x];
+            if (!meta.Valid)
+            {
+                continue;
+            }
+
+            int binsBase = RenderedBinsBase(x);
+            if (binsBase < 0)
+            {
+                continue;
+            }
+
+            RenderBinsToColumn(x, _renderedBins, binsBase, meta);
+        }
+    }
+
     public void SetBph(double bph)
     {
         bool wasValid = _bphValid;

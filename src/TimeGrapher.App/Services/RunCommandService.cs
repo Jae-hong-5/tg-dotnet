@@ -24,6 +24,7 @@ internal sealed class RunCommandService
         _startInProgress = true;
         SetStarting();
         _viewModel.StatusText = "Starting";
+        _viewModel.IsAwaitingBeatSync = true;
         bool started = false;
 
         try
@@ -43,6 +44,7 @@ internal sealed class RunCommandService
             if (!started && !_operations.IsClosing)
             {
                 SetStopped();
+                _viewModel.IsAwaitingBeatSync = false;
                 if (_viewModel.StatusText == "Starting")
                 {
                     _viewModel.StatusText = "Stopped";
@@ -109,6 +111,7 @@ internal sealed class RunCommandService
 
         SetStopped();
         _viewModel.StatusText = "Stopped";
+        _viewModel.IsAwaitingBeatSync = false;
     }
 
     private Task<bool> StartModeAsync(RunCommandMode mode)

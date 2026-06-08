@@ -145,6 +145,9 @@ public sealed class AnalysisFrame
     public PixelBuffer? SoundImage;
     public bool SoundImageUpdated;
 
+    /// <summary>True once the detector has locked onto the tick/tock beat (BPH synced).</summary>
+    public bool BeatSynced;
+
     public ulong GraphTickEnd;
 
     public double BackgroundFps;
