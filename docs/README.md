@@ -10,6 +10,9 @@
 - `ARCHITECTURE_PRESENTATION.md`
   - 듣는 사람이 이해할 수 있게 만든 발표 준비 문서
   - 문제, 해결 방향, 검증 결과를 짧게 설명한다
+- `SAP_TACTICS_ANALYSIS.md`
+  - SAP 교재 기준으로 적용된 Architecture Tactic·Design Pattern을 코드 근거로 매핑한다
+  - 완전 적용/부분 적용/기각을 구분한다 (SW Architecture 과제용)
 
 ## 작업 기록/근거용
 
