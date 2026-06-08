@@ -34,7 +34,7 @@ internal sealed class RateScopeRenderer
     private readonly List<TrackedText> _scopeTexts = new();
     private readonly List<Scatter> _scopePlots = new();
     private readonly List<Scatter> _ratePlots = new();
-    private PlotThemePalette _theme = PlotThemePalette.Light;
+    private PlotThemePalette _theme = PlotThemePalette.Current;
 
     public RateScopeRenderer(AvaPlot scopePlot, AvaPlot ratePlot, string textFontFamily)
     {
@@ -233,9 +233,11 @@ internal sealed class RateScopeRenderer
 
     private uint ThemeColor(GraphSeriesDefinition spec) => spec.Id switch
     {
-        AnalysisGraphSeries.RateTic => _theme.TraceTick,
-        AnalysisGraphSeries.RateToc => _theme.TraceTock,
+        // Both scopes: first series green, second series red.
+        AnalysisGraphSeries.ScopePcm => _theme.TraceTick,
         AnalysisGraphSeries.ScopeThreshold => _theme.StatusError,
+        AnalysisGraphSeries.RateTic => _theme.TraceTick,
+        AnalysisGraphSeries.RateToc => _theme.StatusError,
         _ => _theme.TraceTock,
     };
 
