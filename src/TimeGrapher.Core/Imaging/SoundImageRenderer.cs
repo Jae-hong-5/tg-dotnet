@@ -218,6 +218,12 @@ public sealed class SoundImageRenderer
     // Metadata for each visible screen column.
     private RenderedColumn[] _renderedColumns = Array.Empty<RenderedColumn>();
 
+    // Screen column that last rendered logical column k, indexed by k % _width
+    // (-1 = none). Only one logical column per k % _width can be visible at a
+    // time, so marker lookup can resolve a sample to its screen column without
+    // scanning all _width column metadata entries.
+    private int[] _screenColumnByLogicalIndex = Array.Empty<int>();
+
     // Stored sound bins for each visible screen column.
     // Layout: _renderedBins[x * _height + natural_bucket]. Used for marker-bleed cleanup.
     private float[] _renderedBins = Array.Empty<float>();
@@ -260,6 +266,7 @@ public sealed class SoundImageRenderer
         _anchorColumnsBuffer = new float[_cfg.AnchorColumns * _height];
         _anchorColumnsMeta = new AnchorColumnMeta[_cfg.AnchorColumns];
         _renderedColumns = new RenderedColumn[_width];
+        _screenColumnByLogicalIndex = new int[_width];
         _renderedBins = new float[_width * _height];
         _activeMarkers.Clear();
 
@@ -360,6 +367,7 @@ public sealed class SoundImageRenderer
         Array.Clear(_anchorColumnsBuffer);
         Array.Clear(_anchorColumnsMeta);
         Array.Clear(_renderedColumns);
+        Array.Fill(_screenColumnByLogicalIndex, -1);
         Array.Clear(_renderedBins);
         _activeMarkers.Clear();
     }
@@ -397,6 +405,7 @@ public sealed class SoundImageRenderer
         Array.Clear(_anchorColumnsBuffer);
         Array.Clear(_anchorColumnsMeta);
         Array.Clear(_renderedColumns);
+        Array.Fill(_screenColumnByLogicalIndex, -1);
         Array.Clear(_renderedBins);
         _activeMarkers.Clear();
     }
@@ -805,6 +814,10 @@ public sealed class SoundImageRenderer
         }
 
         _renderedColumns[x] = meta;
+        if (meta.Valid)
+        {
+            _screenColumnByLogicalIndex[(int)(meta.ColumnIndex % _width)] = x;
+        }
         ReapplyMarkersForColumn(x);
     }
 
@@ -1108,18 +1121,42 @@ public sealed class SoundImageRenderer
         Finds which visible column owns the supplied absolute sample index.
         Deterministic range lookup. A column owns sample N if:
             start_sample <= N < end_sample
+
+        Columns own contiguous, disjoint sample ranges whose boundaries are
+        round(k * samples_per_column_exact) from the render epoch, so the owning
+        logical column index is within +/-1 of the closed-form estimate below
+        (boundary rounding shifts each edge by at most 0.5 samples and
+        samples_per_column_exact >= 1). The metadata range check stays
+        authoritative, so the result is identical to a full linear scan.
     */
     private int LookupRenderedColumnBySampleIndex(ulong absoluteSampleIndex)
     {
-        for (int x = 0; x < _width; ++x)
+        if (_width <= 0 || !_bphValid || _samplesPerColumnExact <= 0.0 ||
+            absoluteSampleIndex < _renderEpochSampleIndex)
         {
-            RenderedColumn meta = _renderedColumns[x];
-            if (!meta.Valid)
+            return -1;
+        }
+
+        ulong relativeSample = absoluteSampleIndex - _renderEpochSampleIndex;
+        long estimate = (long)((double)relativeSample / _samplesPerColumnExact);
+
+        for (long k = estimate - 1; k <= estimate + 1; ++k)
+        {
+            if (k < 0)
             {
                 continue;
             }
 
-            if (absoluteSampleIndex >= meta.StartSample &&
+            int x = _screenColumnByLogicalIndex[(int)(k % _width)];
+            if (x < 0)
+            {
+                continue;
+            }
+
+            RenderedColumn meta = _renderedColumns[x];
+            if (meta.Valid &&
+                meta.ColumnIndex == k &&
+                absoluteSampleIndex >= meta.StartSample &&
                 absoluteSampleIndex < meta.EndSample)
             {
                 return x;
