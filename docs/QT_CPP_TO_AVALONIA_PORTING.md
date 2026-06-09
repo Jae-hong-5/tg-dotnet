@@ -60,7 +60,7 @@
 | QThread와 signal | 백그라운드 작업, 이벤트, 화면 주 스레드 전달 |
 | QImage | PixelBuffer와 WriteableBitmap |
 | C++ 검출/계산 코드 | `TimeGrapher.Core`의 C# 계산 코드 |
-| Qt 동영상 스플래시 | MP4에서 뽑은 PNG 122장을 24fps로 재생 |
+| Qt 동영상 스플래시 | MP4에서 뽑은 PNG 74장을 30fps로 재생 |
 
 특히 WPF는 사용하지 않았다. WPF는 Windows 전용이라 Raspberry Pi 목표와 맞지 않기 때문이다.
 
