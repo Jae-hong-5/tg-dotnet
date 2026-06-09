@@ -5,6 +5,7 @@
   <Application.Resources>
     <ResourceDictionary>
       <FontFamily x:Key="AppFontFamily">avares://TimeGrapher.App/Assets/Fonts/D2Coding#D2Coding</FontFamily>
+      <FontFamily x:Key="TitleFontFamily">avares://TimeGrapher.App/Assets/Fonts/Hack#Hack</FontFamily>
       <CornerRadius x:Key="ControlCornerRadius">0</CornerRadius>
       <CornerRadius x:Key="OverlayCornerRadius">0</CornerRadius>
 
@@ -19,38 +20,48 @@
           <Color x:Key="SurfaceColor">#E2E3E4</Color>
           <Color x:Key="PanelColor">#E2E3E4</Color>
           <Color x:Key="TextPrimaryColor">#1A1A1A</Color>
-          <Color x:Key="ChromeBorderColor">#C8D0D8</Color>
+          <Color x:Key="ChromeBorderColor">#CFCFCF</Color>
           <Color x:Key="ChromeAccentColor">#C41230</Color>
           <Color x:Key="ScopeBgColor">#FFFFFF</Color>
-          <Color x:Key="ScopeGridColor">#C8D0D8</Color>
+          <Color x:Key="ScopeGridColor">#EAEAEA</Color>
+          <Color x:Key="TraceWaveColor">#6B6B6B</Color>
           <Color x:Key="TraceTickColor">#2C9118</Color>
-          <Color x:Key="TraceTockColor">#1D8C9A</Color>
-          <Color x:Key="StatusErrorColor">#D22222</Color>
+          <Color x:Key="TraceTockColor">#D22222</Color>
 
           <SolidColorBrush x:Key="SurfaceBgBrush" Color="{DynamicResource SurfaceColor}" />
           <SolidColorBrush x:Key="PanelBgBrush" Color="{DynamicResource PanelColor}" />
           <SolidColorBrush x:Key="TextPrimaryBrush" Color="{DynamicResource TextPrimaryColor}" />
           <SolidColorBrush x:Key="ChromeBorderBrush" Color="{DynamicResource ChromeBorderColor}" />
           <SolidColorBrush x:Key="ChromeAccentBrush" Color="{DynamicResource ChromeAccentColor}" />
+
+          <!-- Selected tab text: pure black in light theme. -->
+          <SolidColorBrush x:Key="TabItemHeaderForegroundSelected" Color="#000000" />
+          <SolidColorBrush x:Key="TabItemHeaderForegroundSelectedPointerOver" Color="#000000" />
+          <SolidColorBrush x:Key="TabItemHeaderForegroundSelectedPressed" Color="#000000" />
         </ResourceDictionary>
 
         <ResourceDictionary x:Key="Dark">
           <Color x:Key="SurfaceColor">#1D1D1B</Color>
           <Color x:Key="PanelColor">#1D1D1B</Color>
-          <Color x:Key="TextPrimaryColor">#E6EDF3</Color>
-          <Color x:Key="ChromeBorderColor">#2A3441</Color>
+          <Color x:Key="TextPrimaryColor">#C2C8CE</Color>
+          <Color x:Key="ChromeBorderColor">#333333</Color>
           <Color x:Key="ChromeAccentColor">#A50034</Color>
           <Color x:Key="ScopeBgColor">#000000</Color>
-          <Color x:Key="ScopeGridColor">#2A3441</Color>
+          <Color x:Key="ScopeGridColor">#1A1A1A</Color>
+          <Color x:Key="TraceWaveColor">#A0A0A0</Color>
           <Color x:Key="TraceTickColor">#5FDD45</Color>
-          <Color x:Key="TraceTockColor">#5FCEDD</Color>
-          <Color x:Key="StatusErrorColor">#FF5C5C</Color>
+          <Color x:Key="TraceTockColor">#FF5C5C</Color>
 
           <SolidColorBrush x:Key="SurfaceBgBrush" Color="{DynamicResource SurfaceColor}" />
           <SolidColorBrush x:Key="PanelBgBrush" Color="{DynamicResource PanelColor}" />
           <SolidColorBrush x:Key="TextPrimaryBrush" Color="{DynamicResource TextPrimaryColor}" />
           <SolidColorBrush x:Key="ChromeBorderBrush" Color="{DynamicResource ChromeBorderColor}" />
           <SolidColorBrush x:Key="ChromeAccentBrush" Color="{DynamicResource ChromeAccentColor}" />
+
+          <!-- Selected tab text: pure white in dark theme. -->
+          <SolidColorBrush x:Key="TabItemHeaderForegroundSelected" Color="#FFFFFF" />
+          <SolidColorBrush x:Key="TabItemHeaderForegroundSelectedPointerOver" Color="#FFFFFF" />
+          <SolidColorBrush x:Key="TabItemHeaderForegroundSelectedPressed" Color="#FFFFFF" />
         </ResourceDictionary>
       </ResourceDictionary.ThemeDictionaries>
     </ResourceDictionary>
@@ -84,6 +95,25 @@
     </Style>
     <Style Selector="Thumb">
       <Setter Property="CornerRadius" Value="0" />
+    </Style>
+    <Style Selector="Button">
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TabItem">
+      <Setter Property="FontFamily" Value="{StaticResource TitleFontFamily}" />
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Padding" Value="6,4" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TabItem:selected">
+      <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+    <Style Selector="TabItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="TextElement.FontWeight" Value="Bold" />
     </Style>
     <Style Selector="Button.TitleBarIconButton">
       <Setter Property="Width" Value="46" />
@@ -140,6 +170,7 @@
       <Setter Property="Fill" Value="White" />
     </Style>
     <Style Selector="TextBlock.SectionHeader">
+      <Setter Property="FontFamily" Value="{StaticResource TitleFontFamily}" />
       <Setter Property="FontSize" Value="16" />
       <Setter Property="FontWeight" Value="Bold" />
       <Setter Property="Foreground" Value="{DynamicResource ChromeAccentBrush}" />
