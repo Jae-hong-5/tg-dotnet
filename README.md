@@ -121,6 +121,44 @@
 - 분석과 동시에 입력을 WAV로 녹음.
 - 화면 없이 검출 정확도·오디오 장치를 점검하는 콘솔 모드.
 
+## 왜 Avalonia / .NET 인가
+
+이 프로젝트는 기존 **Qt/C++** 구현을 **Avalonia + C# (.NET 8)** 로 포팅한 것입니다. "하나의
+코드로 Windows와 라즈베리파이를 적은 비용으로 함께 유지·배포한다"가 목표였고, 실제로 아래와
+같은 이득이 있었습니다.
+
+### 1. 크로스 빌드·배포가 거의 공짜
+
+.NET은 CPU 중립 **IL(중간 언어) + 런타임 묶음** 모델이라 아키텍처별로 다시 컴파일할 필요가
+없습니다. `dotnet publish -r <RID>`는 재컴파일이 아니라 동일한 IL에 타깃용 런타임 팩만 묶는
+작업이라, **GitHub 기본 러너 2종(Windows·Ubuntu)에서 4개 타깃을 모두** 만들어 냅니다(실행하지
+않으니 에뮬레이션도 필요 없습니다).
+
+| 단계 | Avalonia / .NET (현재) | Qt / C++ 였다면 |
+|---|---|---|
+| 아키텍처별 빌드 | `-r` 값만 교체 | 타깃마다 **크로스 컴파일 툴체인 + sysroot** (aarch64-gcc, MSVC ARM64 …) |
+| UI 프레임워크 | NuGet이 RID별로 자동 해결 | **Qt를 아키텍처마다** 빌드/조달 (ARM 리눅스는 직접 빌드하는 경우가 많음) |
+| 네이티브 의존성 | NuGet RID 자산 자동 (예: SkiaSharp `.dll`/`.so`) | 라이브러리마다 타깃 ABI로 직접 컴파일/조달 (vcpkg·Conan) |
+| 배포 묶기 | `--self-contained` 한 번 | `windeployqt`/`linuxdeployqt`로 라이브러리·플러그인 수집, rpath 보정 |
+| CI | GitHub 기본 러너 2종으로 4개 타깃 | 타깃별 환경 구성 + 실행·테스트엔 보통 **ARM 러너나 QEMU 에뮬레이션** |
+
+> 이 저장소의 멀티 아키텍처 릴리즈(win-x64·win-arm64·linux-x64·linux-arm64)는 실제로
+> **csproj 5줄 + 워크플로 매트릭스**로 끝났고, C# 코드 변경은 0줄이었습니다.
+
+### 2. 사용성
+
+**받는 사람(엔드 유저)**
+- **자기 완결형 배포** — .NET 설치 없이 받아서 바로 실행. Windows는 압축 풀고 `.exe`,
+  라즈베리파이는 `./install.sh` 한 번.
+- **공식 바이너리 4종** — Windows x64/ARM, Linux x64/ARM64를 Releases에서 직접 제공.
+- **일관된 현대 UI** — Avalonia Fluent 테마로 OS가 달라도 같은 화면, ScottPlot으로 실시간 그래프.
+
+**만드는 사람(개발자)**
+- **단일 솔루션·단일 언어** — OS 분기는 오디오 백엔드 경계 한 곳뿐, 나머지는 공유.
+- **안전성·생산성** — GC와 nullable 참조 타입으로 수동 메모리·포인터 버그가 줄고 개발 반복이 빨라집니다.
+- **테스트·CI 단순** — `Core`가 UI·OS에 무의존이라 단위 테스트가 쉽고(현재 154개), 별도 환경
+  없이 기본 러너에서 검증됩니다.
+
 ## 구조
 
 분석 엔진(`Core`)은 UI·OS에 전혀 의존하지 않습니다. OS별 오디오 기능만 갈아 끼우면 되고, 이
@@ -226,7 +264,7 @@ GitHub Actions(`.github/workflows/ci.yml`)는 push/PR마다 Ubuntu·Windows 두 
 자동 실행합니다 — 빌드·테스트, WAV 검출 검증, 라즈베리파이·Windows용 배포 산출물 생성.
 
 릴리즈는 CI와 별개의 워크플로(`.github/workflows/release.yml`)가 담당합니다. `v*` 태그를
-푸시하면(또는 수동 dispatch) win-x64·linux-arm64 자기 완결형 묶음(`.zip`/`.tar.gz` + `.sha256`)을
+푸시하면(또는 수동 dispatch) win-x64·win-arm64·linux-x64·linux-arm64 자기 완결형 묶음(`.zip`/`.tar.gz` + `.sha256`)을
 만들어 GitHub Release로 게시합니다(릴리즈 노트 자동 생성, `-`가 든 태그(예: `v0.1.0-rc.1`)는 프리릴리즈로 표시). 릴리즈를 만들려면:
 
 ```bash
