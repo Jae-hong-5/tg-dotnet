@@ -91,7 +91,8 @@ echo "==> Writing desktop entry -> $DESKTOP_DEST"
   echo "[Desktop Entry]"
   echo "Type=Application"
   echo "Name=TimeGrapher"
-  echo "Exec=$LAUNCHER"
+  # Quote Exec per the Desktop Entry spec so an install path with spaces still launches.
+  printf 'Exec="%s"\n' "$LAUNCHER"
   if [ -n "$ICON_DEST" ]; then echo "Icon=$ICON_DEST"; fi
   echo "StartupWMClass=$APP_NAME"
   echo "Categories=Utility;"
