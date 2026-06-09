@@ -12,9 +12,22 @@
 
 ## Quick Start
 
+앱을 손에 넣는 방법은 두 가지입니다. **(A) 미리 빌드된 릴리즈를 내려받기**(개발 도구 설치 없이 바로 실행) 또는 **(B) 소스에서 빌드**.
+
+### (A) 릴리즈 내려받기 (권장 — 빌드 불필요)
+
+[Releases 페이지](https://github.com/lgcmu2026-team5/TimeGrapher-Net/releases)에서 OS에 맞는 자기 완결형(self-contained) 묶음을 받습니다. .NET SDK를 따로 설치할 필요가 없습니다.
+
+- **Windows** — `TimeGrapher-<태그>-win-x64.zip`을 풀고 `TimeGrapher.App.exe`를 실행합니다.
+- **라즈베리파이 5** — `TimeGrapher-<태그>-linux-arm64.tar.gz`를 풀고 `./install.sh`를 실행합니다(아래 라즈베리파이 절 참고).
+
+각 묶음에는 `.sha256` 파일이 함께 있어 무결성을 확인할 수 있습니다 — Windows는 `Get-FileHash`, Pi는 `sha256sum -c <파일>.sha256`.
+
+### (B) 소스에서 빌드
+
 아무것도 설치되지 않은 환경을 기준으로, 사용하는 OS에 맞춰 따라 하세요.
 
-### Windows
+#### Windows
 
 1. **의존성 설치** — .NET SDK 8과 Git을 설치합니다.
 
@@ -29,8 +42,8 @@
 2. **내려받기 + 빌드**
 
    ```powershell
-   git clone https://github.com/Jae-hong-5/tg-dotnet.git
-   cd tg-dotnet
+   git clone https://github.com/lgcmu2026-team5/TimeGrapher-Net.git
+   cd TimeGrapher-Net
    dotnet build TimeGrapherNet.sln -c Release   # 첫 빌드는 패키지 복원으로 몇 분 걸릴 수 있음
    ```
 
@@ -41,7 +54,7 @@
    dotnet run --project src/TimeGrapher.Verify -c Release -- --generated --byte-fixtures   # 화면 없이 검출 정확도만 확인
    ```
 
-### 라즈베리파이 5 (ARM64)
+#### 라즈베리파이 5 (ARM64)
 
 자기 완결형(self-contained) 패키지로 배포하므로 **Pi에는 .NET을 설치하지 않아도 됩니다.**
 빌드는 개발 PC(위 Windows 절차로 준비된 PC)에서 하고, 결과물만 Pi로 복사합니다.
@@ -58,6 +71,10 @@
 
    마이크 입력을 쓰려면 PipeWire 또는 ALSA가 필요하며, Pi OS에는 보통 기본 포함되어 있습니다.
 
+   > ICU(`libicu`)는 위 목록에 **일부러 넣지 않았습니다.** 앱이 invariant globalization 모드
+   > (`InvariantGlobalization=true`, 문화권 중립 설계)로 빌드되어 .NET이 시스템 ICU를 요구하지
+   > 않기 때문입니다.
+
 2. **개발 PC에서 빌드(배포 패키지 생성)**
 
    ```powershell
@@ -65,6 +82,20 @@
    ```
 
 3. **Pi로 복사 후 실행**
+
+   **(A) 릴리즈 tarball을 받았다면 — `install.sh` 한 번이면 끝(권장):** 압축을 풀고 실행하면
+   apt 의존성 설치 + 실행 권한 + 아이콘/`.desktop` 등록까지 처리합니다(경로는 푼 위치로 자동 설정).
+
+   ```bash
+   mkdir -p ~/timegrapher
+   tar -xzf TimeGrapher-*-linux-arm64.tar.gz -C ~/timegrapher
+   cd ~/timegrapher
+   ./install.sh                 # apt 의존성 + chmod + 아이콘/.desktop 등록 (의존성 생략: --no-deps)
+   ./TimeGrapher.App            # 또는 메뉴/작업표시줄의 'TimeGrapher'
+   ./TimeGrapher.App --smoke    # 화면 없이 동작 점검 (장치 목록은 --audio-smoke)
+   ```
+
+   **(B) 소스에서 빌드한 publish 폴더라면 — 수동 실행:**
 
    ```bash
    # (개발 PC) publish 폴더를 Pi로 복사 — 예:
@@ -76,7 +107,7 @@
    ./TimeGrapher.App --smoke    # 화면 없이 동작 점검 (장치 목록은 --audio-smoke)
    ```
 
-   작업표시줄 아이콘 등록은 `deploy/linux/README.md`를 참고하세요.
+   작업표시줄 아이콘 수동 등록 등 데스크톱 통합 세부 사항은 `deploy/linux/README.md`를 참고하세요.
 
 ## 주요 기능
 
@@ -191,6 +222,14 @@ pie showData
 
 GitHub Actions(`.github/workflows/ci.yml`)가 push/PR마다 Ubuntu·Windows 두 환경에서 빌드·테스트와
 WAV 검출 검증, 그리고 라즈베리파이·Windows용 배포 산출물 생성을 자동 실행합니다.
+
+릴리즈는 CI와 분리된 별도 워크플로(`.github/workflows/release.yml`)가 담당합니다. `v*` 태그를
+푸시하면(또는 수동 dispatch) win-x64·linux-arm64 자기 완결형 묶음(`.zip`/`.tar.gz` + `.sha256`)을
+만들어 GitHub Release로 게시합니다(릴리즈 노트 자동 생성, `-`가 든 태그 예: `v0.1.0-rc.1`은 프리릴리즈로 표시). 릴리즈를 자르려면:
+
+```bash
+git tag v0.1.0 && git push origin v0.1.0
+```
 
 ## 체크리스트
 
