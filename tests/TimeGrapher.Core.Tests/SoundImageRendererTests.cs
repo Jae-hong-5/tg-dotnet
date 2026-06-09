@@ -106,6 +106,42 @@ public sealed class SoundImageRendererTests
         }
     }
 
+    [Fact]
+    public void Markers_AfterImageWrap_SurviveRecolorRebuild()
+    {
+        // 64 columns at 28800 BPH wrap after 8 s; feeding ~10 s exercises the
+        // logical-column ring used by marker lookup past the wrap point.
+        var image = new PixelBuffer(64, 48);
+        SoundImageRenderer renderer = NewRenderer(image, White, bph: 28800.0);
+
+        var synth = new WatchSynthStream(CleanSynth(28800));
+        var block = new float[4096];
+        for (int fed = 0; fed < 48000 * 10; fed += block.Length)
+        {
+            synth.Generate(block);
+            renderer.ProcessSamples(block);
+        }
+        Assert.True(renderer.BandCenterLocked);
+
+        // One marker on a still-visible recent beat, one on a long-overwritten
+        // sample (must resolve to no column and draw nothing).
+        ulong recent = renderer.NextInputAbsoluteSampleIndex() - 3 * 6000;
+        renderer.MarkAEventAbsoluteSampleIndex(recent, Black, 9);
+        renderer.MarkAEventAbsoluteSampleIndex(0, Black, 9);
+
+        int[] markerPixelsBefore = Enumerable.Range(0, image.Pixels.Length)
+            .Where(i => image.Pixels[i] == Black).ToArray();
+        Assert.NotEmpty(markerPixelsBefore);
+
+        // Recolor rebuilds every stored column and reapplies markers column by
+        // column; the marker must land on exactly the same pixels.
+        renderer.Recolor(White);
+
+        int[] markerPixelsAfter = Enumerable.Range(0, image.Pixels.Length)
+            .Where(i => image.Pixels[i] == Black).ToArray();
+        Assert.Equal(markerPixelsBefore, markerPixelsAfter);
+    }
+
     private static WatchSynthStreamConfig CleanSynth(int bph)
     {
         WatchSynthStreamConfig cfg = WatchSynthStreamConfig.Clean();
