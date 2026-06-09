@@ -3,8 +3,7 @@
 **English** · [한국어](README.ko.md)
 
 The release's `TimeGrapher-<version>-linux-arm64.tar.gz` ships this README, the app
-binary, the icon (`AppIcon-256.png`), the desktop entry (`TimeGrapher.App.desktop`),
-and the installer script (`install.sh`).
+binary, the icon (`AppIcon-256.png`), and the installer script (`install.sh`).
 
 ## 1. Quick install (recommended)
 
@@ -70,13 +69,20 @@ taskbar icon appears only after you install the two files below on the Pi.
 mkdir -p ~/.local/share/icons
 cp AppIcon-256.png ~/.local/share/icons/timegrapher.png
 
-# 2) desktop entry (edit Exec/Icon paths to match your install location)
+# 2) desktop entry (this is what install.sh generates; Exec/Icon must be absolute paths)
 mkdir -p ~/.local/share/applications
-cp TimeGrapher.App.desktop ~/.local/share/applications/
+cat > ~/.local/share/applications/TimeGrapher.App.desktop <<EOF
+[Desktop Entry]
+Type=Application
+Name=TimeGrapher
+Exec=$HOME/timegrapher/TimeGrapher.App
+Icon=$HOME/.local/share/icons/timegrapher.png
+StartupWMClass=TimeGrapher.App
+Categories=Utility;
+EOF
 ```
 
-- The default `Exec`/`Icon` paths target the team Pi (`team5`), so edit them for other setups.
-  (e.g. if you extracted to `~/timegrapher` above, `Exec=/home/<user>/timegrapher/TimeGrapher.App`)
+- Adjust `Exec` if you extracted somewhere other than `~/timegrapher`.
 - Keep the filename `TimeGrapher.App.desktop` (matching the app-id) so the panel matches it
   (`StartupWMClass` is set too).
 - If it doesn't show up, restart the app; if it still doesn't, `pkill wf-panel-pi` (the panel auto-restarts).

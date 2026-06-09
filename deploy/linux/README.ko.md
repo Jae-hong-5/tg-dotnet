@@ -3,8 +3,7 @@
 [English](README.md) · **한국어**
 
 릴리즈의 `TimeGrapher-<버전>-linux-arm64.tar.gz`에는 이 README, 앱 바이너리,
-아이콘(`AppIcon-256.png`), 데스크톱 엔트리(`TimeGrapher.App.desktop`), 설치
-스크립트(`install.sh`)가 함께 들어 있다.
+아이콘(`AppIcon-256.png`), 설치 스크립트(`install.sh`)가 함께 들어 있다.
 
 ## 1. 빠른 설치 (권장)
 
@@ -69,13 +68,20 @@ Pi OS의 작업표시줄(wf-panel-pi, Wayland)은 앱 윈도우가 제공하는 
 mkdir -p ~/.local/share/icons
 cp AppIcon-256.png ~/.local/share/icons/timegrapher.png
 
-# 2) 데스크톱 엔트리 (Exec/Icon 경로는 배포 위치에 맞게 수정)
+# 2) 데스크톱 엔트리 (install.sh가 생성하는 내용과 동일; Exec/Icon은 절대경로여야 함)
 mkdir -p ~/.local/share/applications
-cp TimeGrapher.App.desktop ~/.local/share/applications/
+cat > ~/.local/share/applications/TimeGrapher.App.desktop <<EOF
+[Desktop Entry]
+Type=Application
+Name=TimeGrapher
+Exec=$HOME/timegrapher/TimeGrapher.App
+Icon=$HOME/.local/share/icons/timegrapher.png
+StartupWMClass=TimeGrapher.App
+Categories=Utility;
+EOF
 ```
 
-- `Exec`/`Icon` 경로는 기본값이 팀 Pi(`team5`) 기준이므로 다른 환경에서는 수정할 것.
-  (예: 위에서 `~/timegrapher`에 풀었다면 `Exec=/home/<user>/timegrapher/TimeGrapher.App`)
+- `~/timegrapher`가 아닌 곳에 풀었다면 `Exec`를 그 위치로 수정할 것.
 - 파일명은 app-id와 같은 `TimeGrapher.App.desktop`을 유지해야 패널이 매칭한다
   (`StartupWMClass`도 함께 지정되어 있음).
 - 적용이 안 보이면 앱 재시작, 그래도 안 되면 `pkill wf-panel-pi`(패널 자동 재실행).
