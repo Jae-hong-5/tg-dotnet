@@ -1,0 +1,68 @@
+using TimeGrapher.Core.Metrics;
+using Xunit;
+
+namespace TimeGrapher.Core.Tests;
+
+/// <summary>
+/// Locks the title-bar readout formatting: fixed-width fields (so the line never shifts as
+/// values change), value-span markers around numbers only, and the constant separators/units.
+/// </summary>
+public sealed class WatchMetricsResultsTests
+{
+    private const char S = WatchMetrics.ValueSpanStart; // '{'
+    private const char E = WatchMetrics.ValueSpanEnd;   // '}'
+
+    [Fact]
+    public void AllInvalid_RendersDashPlaceholdersWithoutMarkers()
+    {
+        string r = WatchMetrics.BuildResults(false, 0, false, 0.0, false, 0.0, false, 0.0);
+
+        Assert.Equal("RATE ----- s/d | AMPLITUDE ---° | BEAT ERROR ---- ms | BEAT ----- bph", r);
+        // Dashes are placeholders, not numbers, so they carry no accent markers.
+        Assert.DoesNotContain(S, r);
+        Assert.DoesNotContain(E, r);
+    }
+
+    [Fact]
+    public void AllValid_WrapsEachNumberInMarkersWithFixedWidths()
+    {
+        string r = WatchMetrics.BuildResults(true, 21600, true, 1.2, true, 0.3, true, 271);
+
+        Assert.Equal(
+            $"RATE {S} +1.2{E} s/d | AMPLITUDE {S}271{E}° | BEAT ERROR {S} 0.3{E} ms | BEAT {S}21600{E} bph",
+            r);
+    }
+
+    [Fact]
+    public void NumericFieldsAreFixedWidthRegardlessOfMagnitude()
+    {
+        string small = WatchMetrics.BuildResults(true, 18000, true, 1.2, true, 0.3, true, 45);
+        string large = WatchMetrics.BuildResults(true, 28800, true, -99.9, true, -9.9, true, 320);
+
+        Assert.Equal(small.Length, large.Length);
+    }
+
+    [Fact]
+    public void RateAlwaysCarriesExplicitSign()
+    {
+        string positive = WatchMetrics.BuildResults(false, 0, true, 5.0, false, 0.0, false, 0.0);
+        string negative = WatchMetrics.BuildResults(false, 0, true, -5.0, false, 0.0, false, 0.0);
+
+        Assert.Contains($"{S} +5.0{E}", positive);
+        Assert.Contains($"{S} -5.0{E}", negative);
+    }
+
+    [Fact]
+    public void DegreeSignIsAlwaysPresent()
+    {
+        Assert.Contains("°", WatchMetrics.BuildResults(false, 0, false, 0.0, false, 0.0, false, 0.0));
+        Assert.Contains("°", WatchMetrics.BuildResults(true, 21600, true, 1.2, true, 0.3, true, 271));
+    }
+
+    [Fact]
+    public void AmplitudeRoundsHalfAwayFromZero()
+    {
+        string r = WatchMetrics.BuildResults(false, 0, false, 0.0, false, 0.0, true, 270.5);
+        Assert.Contains($"{S}271{E}", r);
+    }
+}

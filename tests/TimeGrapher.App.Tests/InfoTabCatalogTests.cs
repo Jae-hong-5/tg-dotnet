@@ -50,4 +50,19 @@ public sealed class InfoTabCatalogTests
         Assert.False(InfoTabCatalog.TryGet("missing", out InfoTabDefinition? tab));
         Assert.Null(tab);
     }
+
+    [Fact]
+    public void CatalogReservesTwelveTabsWithTenPlaceholders()
+    {
+        InfoTabDefinition[] functional = InfoTabCatalog.All
+            .Where(tab => tab.Kind != InfoTabKind.Placeholder).ToArray();
+        InfoTabDefinition[] placeholders = InfoTabCatalog.All
+            .Where(tab => tab.Kind == InfoTabKind.Placeholder).ToArray();
+
+        Assert.Equal(12, InfoTabCatalog.All.Count);
+        Assert.Equal(2, functional.Length);
+        Assert.Equal(10, placeholders.Length);
+        Assert.All(placeholders, tab => Assert.Empty(tab.GraphSeries));
+        Assert.All(placeholders, tab => Assert.False(tab.UsesGraphSnapshots));
+    }
 }
