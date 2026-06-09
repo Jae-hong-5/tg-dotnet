@@ -104,8 +104,8 @@ Date: 2026-06-06
 
 수정:
 
-- `splash5.mp4`를 640x360 PNG 122장으로 변환했다.
-- `SplashWindow`가 24fps로 PNG 시퀀스를 보여준 뒤 `MainWindow`로 전환한다.
+- `intro.mp4`(원본)를 2배속한 `intro_2x.mp4`에서 640x360 PNG 74장으로 변환했다.
+- `SplashWindow`가 30fps로 PNG 시퀀스를 보여준 뒤 `MainWindow`로 전환한다.
 - 원본 MP4는 `Assets/Splash/Source/`에 보관하고, 앱 리소스는 PNG만 포함한다.
 
 효과: Windows와 Raspberry Pi에서 같은 방식으로 시작 화면을 보여줄 수 있다.
