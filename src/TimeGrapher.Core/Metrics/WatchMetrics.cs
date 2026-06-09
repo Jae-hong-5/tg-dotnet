@@ -306,56 +306,31 @@ public sealed class WatchMetrics
 
     private static string Mark(string value) => ValueSpanStart + value + ValueSpanEnd;
 
-    private string FormatResults()
+    private string FormatResults() => BuildResults(
+        _bphValid, _bph,
+        _rlsRateValid, _rlsRate,
+        _rollBeatError.CurrentSize() > 0, _rollBeatError.GetAverage(),
+        _rollAmplitude.CurrentSize() > 0, _rollAmplitude.GetAverage());
+
+    /// <summary>
+    /// Pure formatter for the title-bar readout. Each field is fixed-width so the line never
+    /// shifts as values change; present numeric values are wrapped in value-span markers (so
+    /// the UI can accent only the numbers) while dash placeholders are left unmarked. Widths:
+    /// rate 5 ("-99.9"), amplitude 3 + constant degree sign, beat error 4 ("-9.9"), bph 5.
+    /// </summary>
+    internal static string BuildResults(
+        bool bphValid, int bph,
+        bool rateValid, double rate,
+        bool beatErrorValid, double beatError,
+        bool amplitudeValid, double amplitude)
     {
-        string beatsPerHour;
-        string rateError;
-        string beatError;
-        string amplitudeText;
-
-        if (_bphValid)
-        {
-            // QString("%1").arg(mBph, 5, 10, QChar(' ')) : int, width 5, space-padded, right-aligned
-            beatsPerHour = Mark(ArgInt(_bph, 5));
-        }
-        else
-        {
-            beatsPerHour = "-----";
-        }
-
-        if (_rlsRateValid)
-        {
-            // Width 5: forced sign + "%.1f" covers "-99.9".."+99.9"; rate stays within ±99.9.
-            rateError = Mark(PrintfPlusFloat(_rlsRate, 5, 1));
-        }
-        else
-        {
-            rateError = "-----";
-        }
-
-        if (_rollBeatError.CurrentSize() > 0)
-        {
-            // Width 4 covers the full range ("-9.9".."99.9"); beat error never reaches ±10.
-            beatError = Mark(ArgFixed(_rollBeatError.GetAverage(), 4, 1));
-        }
-        else
-        {
-            beatError = "----";
-        }
-
-        if (_rollAmplitude.CurrentSize() > 0)
-        {
-            // Width 3; the degree sign is appended as a constant suffix below so the field
-            // width stays identical whether or not a value is present.
-            amplitudeText = Mark(ArgLong(QRound64(_rollAmplitude.GetAverage()), 3));
-        }
-        else
-        {
-            amplitudeText = "---";
-        }
+        string beatsPerHour = bphValid ? Mark(ArgInt(bph, 5)) : "-----";
+        string rateError = rateValid ? Mark(PrintfPlusFloat(rate, 5, 1)) : "-----";
+        string beatErrorText = beatErrorValid ? Mark(ArgFixed(beatError, 4, 1)) : "----";
+        string amplitudeText = amplitudeValid ? Mark(ArgLong(QRound64(amplitude), 3)) : "---";
 
         return "RATE " + rateError + " s/d | AMPLITUDE " + amplitudeText + "°" +
-               " | BEAT ERROR " + beatError + " ms | BEAT " + beatsPerHour + " bph";
+               " | BEAT ERROR " + beatErrorText + " ms | BEAT " + beatsPerHour + " bph";
     }
 
     private double WrapIntoRange(double number, double lowerBound, double upperBound)
