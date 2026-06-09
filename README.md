@@ -4,6 +4,9 @@
 보여 주는 데스크톱 앱입니다. 기존 Qt/C++ 버전을 **Avalonia + C# (.NET 8)** 로 다시 만들어,
 같은 코드로 **Windows**와 **라즈베리파이 5**에서 모두 동작합니다.
 
+![AvaloniaUI](https://img.shields.io/badge/AvaloniaUI-165BFF?style=for-the-badge&logo=avaloniaui&logoColor=white)
+
+
 ## Quick Start
 
 아무것도 설치되지 않은 환경을 기준으로, 사용하는 OS에 맞춰 따라 하세요.
