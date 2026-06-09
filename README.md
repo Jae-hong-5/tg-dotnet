@@ -1,8 +1,8 @@
 # TimeGrapherNet
 
-기계식 시계의 똑딱 소리를 마이크로 듣고, 시계가 얼마나 정확한지를 실시간으로 분석해 그래프로
+기계식 시계의 똑딱 소리를 마이크로 듣고, 얼마나 정확한지 실시간으로 분석해 그래프로
 보여 주는 데스크톱 앱입니다. 기존 Qt/C++ 버전을 **Avalonia + C# (.NET 8)** 로 다시 만들어,
-같은 코드로 **Windows**와 **라즈베리파이 5**에서 모두 동작합니다.
+하나의 코드로 **Windows**와 **라즈베리파이 5**에서 모두 동작합니다.
 
 [![Release](https://img.shields.io/github/v/release/lgcmu2026-team5/TimeGrapher-Net?style=for-the-badge&logo=github)](https://github.com/lgcmu2026-team5/TimeGrapher-Net/releases/latest)
 
@@ -18,16 +18,16 @@
 
 ### (A) 릴리즈 내려받기 (권장 — 빌드 불필요)
 
-[Releases 페이지](https://github.com/lgcmu2026-team5/TimeGrapher-Net/releases)에서 OS에 맞는 자기 완결형(self-contained) 묶음을 받습니다. .NET SDK를 따로 설치할 필요가 없습니다.
+[Releases 페이지](https://github.com/lgcmu2026-team5/TimeGrapher-Net/releases)에서 OS에 맞는 자기 완결형(self-contained) 묶음을 내려받습니다. .NET SDK는 설치하지 않아도 됩니다.
 
 - **Windows** — `TimeGrapher-<태그>-win-x64.zip`을 풀고 `TimeGrapher.App.exe`를 실행합니다.
 - **라즈베리파이 5** — `TimeGrapher-<태그>-linux-arm64.tar.gz`를 풀고 `./install.sh`를 실행합니다(아래 라즈베리파이 절 참고).
 
-각 묶음에는 `.sha256` 파일이 함께 있어 무결성을 확인할 수 있습니다 — Windows는 `Get-FileHash`, Pi는 `sha256sum -c <파일>.sha256`.
+각 묶음에는 `.sha256` 파일이 함께 들어 있어 무결성을 검증할 수 있습니다(Windows는 `Get-FileHash`, Pi는 `sha256sum -c <파일>.sha256` 사용).
 
 ### (B) 소스에서 빌드
 
-아무것도 설치되지 않은 환경을 기준으로, 사용하는 OS에 맞춰 따라 하세요.
+아무것도 설치되지 않은 환경을 기준으로 합니다. 사용하는 OS에 맞는 절차를 따르세요.
 
 #### Windows
 
@@ -62,7 +62,7 @@
 빌드는 개발 PC(위 Windows 절차로 준비된 PC)에서 하고, 결과물만 Pi로 복사합니다.
 
 > 💡 CPU가 달라도 되는 이유: 빌드 결과물은 x64 기계어가 아니라 **CPU 중립 IL 코드 + ARM64용 .NET
-> 런타임** 묶음입니다. 실제 ARM64 기계어로의 변환은 실행할 때 Pi 안에서 일어납니다.
+> 런타임** 묶음입니다. 실제 ARM64 기계어 변환은 실행할 때 Pi에서 일어납니다.
 
 1. **Pi 의존성 설치** — Pi 터미널에서 GUI 실행에 필요한 라이브러리를 설치합니다.
 
@@ -71,7 +71,7 @@
    sudo apt install -y libx11-6 libice6 libsm6 libfontconfig1 xwayland
    ```
 
-   마이크 입력을 쓰려면 PipeWire 또는 ALSA가 필요하며, Pi OS에는 보통 기본 포함되어 있습니다.
+   마이크 입력에는 PipeWire 또는 ALSA가 필요한데, Pi OS에는 보통 기본 포함되어 있습니다.
 
    > ICU(`libicu`)는 위 목록에 **일부러 넣지 않았습니다.** 앱이 invariant globalization 모드
    > (`InvariantGlobalization=true`, 문화권 중립 설계)로 빌드되어 .NET이 시스템 ICU를 요구하지
@@ -222,12 +222,12 @@ pie showData
 
 *그림 4. 테스트 분포.*
 
-GitHub Actions(`.github/workflows/ci.yml`)가 push/PR마다 Ubuntu·Windows 두 환경에서 빌드·테스트와
-WAV 검출 검증, 그리고 라즈베리파이·Windows용 배포 산출물 생성을 자동 실행합니다.
+GitHub Actions(`.github/workflows/ci.yml`)는 push/PR마다 Ubuntu·Windows 두 환경에서 다음을
+자동 실행합니다 — 빌드·테스트, WAV 검출 검증, 라즈베리파이·Windows용 배포 산출물 생성.
 
-릴리즈는 CI와 분리된 별도 워크플로(`.github/workflows/release.yml`)가 담당합니다. `v*` 태그를
+릴리즈는 CI와 별개의 워크플로(`.github/workflows/release.yml`)가 담당합니다. `v*` 태그를
 푸시하면(또는 수동 dispatch) win-x64·linux-arm64 자기 완결형 묶음(`.zip`/`.tar.gz` + `.sha256`)을
-만들어 GitHub Release로 게시합니다(릴리즈 노트 자동 생성, `-`가 든 태그 예: `v0.1.0-rc.1`은 프리릴리즈로 표시). 릴리즈를 만들려면:
+만들어 GitHub Release로 게시합니다(릴리즈 노트 자동 생성, `-`가 든 태그(예: `v0.1.0-rc.1`)는 프리릴리즈로 표시). 릴리즈를 만들려면:
 
 ```bash
 git tag v0.1.0 && git push origin v0.1.0
