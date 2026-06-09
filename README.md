@@ -171,13 +171,13 @@ classDiagram
 
 ## 테스트 / CI
 
-`dotnet test` 기준 **150개 테스트 전부 통과**(App 71 / Core 69 / LinuxAudio 10).
+`dotnet test` 기준 **154개 테스트 전부 통과**(App 71 / Core 73 / LinuxAudio 10).
 
 ```mermaid
 pie showData
-    title 테스트 분포 (총 150)
+    title 테스트 분포 (총 154)
     "App.Tests" : 71
-    "Core.Tests" : 69
+    "Core.Tests" : 73
     "Platform.LinuxAudio.Tests" : 10
 ```
 
@@ -191,7 +191,7 @@ WAV 검출 검증, 그리고 라즈베리파이·Windows용 배포 산출물 생
 | 항목 | 명령 | 상태 |
 |---|---|---|
 | 빌드 | `dotnet build TimeGrapherNet.sln -c Release` | ✅ |
-| 테스트 | `dotnet test TimeGrapherNet.sln -c Release` (150/150) | ✅ |
+| 테스트 | `dotnet test TimeGrapherNet.sln -c Release` (154/154) | ✅ |
 | 검출 검증 | `... TimeGrapher.Verify -- --generated --byte-fixtures` (exit 0) | ✅ |
 | GUI 실행 | `dotnet run --project src/TimeGrapher.App` | ✅ |
 | 라즈베리파이 배포 | `dotnet publish ... -r linux-arm64 --self-contained true` | ✅ |
