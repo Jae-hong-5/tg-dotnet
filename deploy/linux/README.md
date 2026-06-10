@@ -8,8 +8,9 @@ binary, the icon (`AppIcon-256.png`), and the installer script (`install.sh`).
 ## 1. Quick install (recommended)
 
 Extract and run `install.sh` once — it installs dependencies, sets the executable bit,
-and registers the icon/desktop entry. The desktop entry's `Exec`/`Icon` paths are **set
-automatically to the extract location**.
+registers the icon/desktop entry, and creates a `TimeGrapher.desktop` launcher in the
+extract folder plus a desktop shortcut (replacing any existing one). Every entry's
+`Exec`/`Icon` paths are **set automatically to the extract location**.
 
 ```bash
 mkdir -p ~/timegrapher
@@ -21,6 +22,9 @@ cd ~/timegrapher
 
 - `install.sh` is idempotent (safe to re-run). It installs dependencies only when
   `apt-get` is present, and uses `sudo` when not root.
+- The raw `TimeGrapher.App` binary showing a generic icon in the file manager is normal
+  — a Linux ELF cannot embed an icon the way a Windows .exe does. Double-click the
+  generated `TimeGrapher.desktop` launcher (or the desktop shortcut) instead.
 - Headless/SSH check: `./TimeGrapher.App --smoke` (self-check without a GUI; exit code 0 on success).
 
 Being a self-contained build, **no .NET runtime install is needed.** Sections 2 and 3
