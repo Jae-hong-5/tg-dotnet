@@ -17,23 +17,37 @@ public sealed class ScopeRateFrameProjector
     private readonly List<ScopeVerticalMarker> _scopeWindowVerticalMarkers = new();
     private readonly List<ScopeHorizontalMarker> _scopeWindowHorizontalMarkers = new();
     private readonly List<ScopeTextMarker> _scopeWindowTextMarkers = new();
-    private readonly List<double> _latestTicRateX = new();
-    private readonly List<double> _latestTicRateY = new();
-    private readonly List<double> _latestTocRateX = new();
-    private readonly List<double> _latestTocRateY = new();
+    // Latest tic/toc rate series as immutable snapshots. Rate data changes only on
+    // beat events (~8 Hz at 28800 BPH) while frames are produced per audio block
+    // (50-100 Hz), so the snapshot is rebuilt once per actual update and the SAME
+    // object is reattached to the frames in between — every frame still carries
+    // the full latest bundle, without re-copying 250-point lists per frame.
+    // Consumers only read GraphSeriesFrame (init-only, IReadOnlyList), so sharing
+    // one instance across frames is safe.
+    private GraphSeriesFrame? _latestTicRateSeries;
+    private GraphSeriesFrame? _latestTocRateSeries;
     private string _latestResultsText = "";
     private ulong _localGraphTicks;
     private double _lastA;
     private bool _haveLastA;
-    private bool _hasLatestTicRate;
-    private bool _hasLatestTocRate;
     private bool _hasLatestResultsText;
+
+    private int _strideScale = 1;
 
     public ScopeRateFrameProjector(int sampleRate, bool useCOnset, int scopeSnapshotPointBudget)
     {
         _sampleRate = sampleRate;
         _useCOnset = useCOnset;
         _scopeSnapshotPointBudget = scopeSnapshotPointBudget;
+    }
+
+    /// <summary>
+    /// Deadline-degradation knob: coarsen the scope decimation stride by an integer
+    /// factor (1 = the configured point budget). Analysis thread only.
+    /// </summary>
+    public void SetScopeStrideScale(int scale)
+    {
+        _strideScale = Math.Max(1, scale);
     }
 
     public void Project(DetectorMetricsBlockUpdate update, AnalysisFrame frame)
@@ -102,26 +116,14 @@ public sealed class ScopeRateFrameProjector
             frame.MetricsUpdate.SetResults(_latestResultsText);
         }
 
-        if (_hasLatestTicRate)
+        if (_latestTicRateSeries != null)
         {
-            frame.AddRateSeries(new GraphSeriesFrame
-            {
-                Id = AnalysisGraphSeries.RateTic,
-                X = new List<double>(_latestTicRateX),
-                Y = new List<double>(_latestTicRateY),
-                Replace = true,
-            });
+            frame.AddRateSeries(_latestTicRateSeries);
         }
 
-        if (_hasLatestTocRate)
+        if (_latestTocRateSeries != null)
         {
-            frame.AddRateSeries(new GraphSeriesFrame
-            {
-                Id = AnalysisGraphSeries.RateToc,
-                X = new List<double>(_latestTocRateX),
-                Y = new List<double>(_latestTocRateY),
-                Replace = true,
-            });
+            frame.AddRateSeries(_latestTocRateSeries);
         }
     }
 
@@ -201,16 +203,24 @@ public sealed class ScopeRateFrameProjector
     {
         if (update.TicRateUpdated)
         {
-            ReplaceLatest(_latestTicRateX, update.XTic);
-            ReplaceLatest(_latestTicRateY, update.YTic);
-            _hasLatestTicRate = true;
+            _latestTicRateSeries = new GraphSeriesFrame
+            {
+                Id = AnalysisGraphSeries.RateTic,
+                X = new List<double>(update.XTic),
+                Y = new List<double>(update.YTic),
+                Replace = true,
+            };
             frame.MetricsUpdate.SetTicRate(update.XTic, update.YTic);
         }
         if (update.TocRateUpdated)
         {
-            ReplaceLatest(_latestTocRateX, update.XToc);
-            ReplaceLatest(_latestTocRateY, update.YToc);
-            _hasLatestTocRate = true;
+            _latestTocRateSeries = new GraphSeriesFrame
+            {
+                Id = AnalysisGraphSeries.RateToc,
+                X = new List<double>(update.XToc),
+                Y = new List<double>(update.YToc),
+                Replace = true,
+            };
             frame.MetricsUpdate.SetTocRate(update.XToc, update.YToc);
         }
         if (update.ResultsUpdated)
@@ -221,19 +231,13 @@ public sealed class ScopeRateFrameProjector
         }
     }
 
-    private static void ReplaceLatest(List<double> target, IReadOnlyList<double> source)
-    {
-        target.Clear();
-        target.AddRange(source);
-    }
-
     private int ScopeSnapshotStride()
     {
         int baseStride = Math.Max(1, _sampleRate / 48000);
         int maxWindowSamples = Math.Max(1, ScopeSnapshotSeconds * _sampleRate);
         int pointBudget = Math.Max(1, _scopeSnapshotPointBudget);
         int budgetStride = (int)Math.Ceiling(maxWindowSamples / (double)pointBudget);
-        return Math.Max(baseStride, budgetStride);
+        return Math.Max(baseStride, budgetStride) * _strideScale;
     }
 
     private void TrimScopeWindow()

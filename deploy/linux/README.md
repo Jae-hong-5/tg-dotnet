@@ -1,21 +1,92 @@
-# Linux (Raspberry Pi) 데스크톱 통합
+# Linux (Raspberry Pi 5) — install · run · desktop integration
 
-Pi OS의 작업표시줄(wf-panel-pi, Wayland)은 앱 윈도우가 제공하는 아이콘(`_NET_WM_ICON`)을
-사용하지 않고, 윈도우의 app-id(XWayland에서는 `WM_CLASS` = 엔트리 어셈블리명
-`TimeGrapher.App`)와 매칭되는 `.desktop` 파일의 `Icon=`만 사용한다. 따라서 작업표시줄
-아이콘은 아래 두 파일을 Pi에 설치해야 표시된다.
+**English** · [한국어](README.ko.md)
+
+The release's `TimeGrapher-<version>-linux-arm64.tar.gz` ships this README, the app
+binary, the icon (`AppIcon-256.png`), and the installer script (`install.sh`).
+
+## 1. Quick install (recommended)
+
+Extract and run `install.sh` once — it installs dependencies, sets the executable bit,
+registers the icon/desktop entry, and creates a `TimeGrapher.desktop` launcher in the
+extract folder plus a desktop shortcut (replacing any existing one). Every entry's
+`Exec`/`Icon` paths are **set automatically to the extract location**.
 
 ```bash
-# 1) 아이콘 (저장소의 src/TimeGrapher.App/Assets/App/AppIcon-256.png 를 복사)
+mkdir -p ~/timegrapher
+tar -xzf TimeGrapher-*-linux-arm64.tar.gz -C ~/timegrapher
+cd ~/timegrapher
+./install.sh           # apt deps + chmod + icon/.desktop install (skip deps: --no-deps)
+./TimeGrapher.App      # or 'TimeGrapher' from the menu/taskbar
+```
+
+- `install.sh` is idempotent (safe to re-run). It installs dependencies only when
+  `apt-get` is present, and uses `sudo` when not root.
+- The raw `TimeGrapher.App` binary showing a generic icon in the file manager is normal
+  — a Linux ELF cannot embed an icon the way a Windows .exe does. Double-click the
+  generated `TimeGrapher.desktop` launcher (or the desktop shortcut) instead.
+- Headless/SSH check: `./TimeGrapher.App --smoke` (self-check without a GUI; exit code 0 on success).
+
+Being a self-contained build, **no .NET runtime install is needed.** Sections 2 and 3
+below are for doing what `install.sh` automates by hand, or for troubleshooting.
+
+## 2. Runtime dependencies (manual — once on a fresh Pi OS)
+
+The self-contained bundle includes the .NET runtime but not the system X11/font
+libraries. If no window appears or fonts are missing, install them:
+
+```bash
+sudo apt update
+sudo apt install -y libx11-6 libice6 libsm6 libfontconfig1 xwayland
+```
+
+- `libx11-6 libice6 libsm6` — Avalonia's X11 backend. Without them the windowing backend fails to initialize.
+- `libfontconfig1` — fonts. Without it text rendering / startup fails.
+- `xwayland` — Pi OS defaults to a Wayland session, but Avalonia uses the X11 backend and
+  runs via XWayland. If no window appears, suspect this first.
+- (Optional) For direct DRM/KMS fullscreen, you also need `libgbm1 libdrm2 libinput10`.
+
+> ICU (`libicu`) is **not needed.** The app is built in invariant globalization mode
+> (`InvariantGlobalization=true`), so .NET does not require system ICU.
+
+> A 64-bit userland is required: `dpkg --print-architecture` must report `arm64`
+> (an armhf userland cannot run this arm64 build).
+
+On headless/SSH, check via the CLI smoke flag instead of the GUI:
+
+```bash
+./TimeGrapher.App --smoke   # headless self-check, exit code 0 on success
+```
+
+## 3. Desktop integration (manual — taskbar icon)
+
+> `install.sh` handles this automatically (including path setup). The below is for manual
+> install or for understanding how it works.
+
+The Pi OS taskbar (wf-panel-pi, Wayland) does not use the icon the app window provides
+(`_NET_WM_ICON`); it only uses the `Icon=` from the `.desktop` file matched to the window's
+app-id (under XWayland, `WM_CLASS` = the entry assembly name `TimeGrapher.App`). So the
+taskbar icon appears only after you install the two files below on the Pi.
+
+```bash
+# 1) icon (AppIcon-256.png shipped in the tarball — repo path: src/TimeGrapher.App/Assets/App/AppIcon-256.png)
 mkdir -p ~/.local/share/icons
 cp AppIcon-256.png ~/.local/share/icons/timegrapher.png
 
-# 2) 데스크톱 엔트리 (Exec/Icon 경로는 배포 위치에 맞게 수정)
+# 2) desktop entry (this is what install.sh generates; Exec/Icon must be absolute paths)
 mkdir -p ~/.local/share/applications
-cp TimeGrapher.App.desktop ~/.local/share/applications/
+cat > ~/.local/share/applications/TimeGrapher.App.desktop <<EOF
+[Desktop Entry]
+Type=Application
+Name=TimeGrapher
+Exec=$HOME/timegrapher/TimeGrapher.App
+Icon=$HOME/.local/share/icons/timegrapher.png
+StartupWMClass=TimeGrapher.App
+Categories=Utility;
+EOF
 ```
 
-- `Exec`/`Icon` 경로는 기본값이 팀 Pi(`team5`) 기준이므로 다른 환경에서는 수정할 것.
-- 파일명은 app-id와 같은 `TimeGrapher.App.desktop`을 유지해야 패널이 매칭한다
-  (`StartupWMClass`도 함께 지정되어 있음).
-- 적용이 안 보이면 앱 재시작, 그래도 안 되면 `pkill wf-panel-pi`(패널 자동 재실행).
+- Adjust `Exec` if you extracted somewhere other than `~/timegrapher`.
+- Keep the filename `TimeGrapher.App.desktop` (matching the app-id) so the panel matches it
+  (`StartupWMClass` is set too).
+- If it doesn't show up, restart the app; if it still doesn't, `pkill wf-panel-pi` (the panel auto-restarts).

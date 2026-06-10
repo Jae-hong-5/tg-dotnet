@@ -58,10 +58,17 @@ public sealed class MasterAudioBuffer
     {
         lock (Lock)
         {
-            for (int i = 0; i < data.Length; i++)
+            // Segment copies instead of a per-sample modulo loop: the capture
+            // callback blocks on this lock, so the hold must stay short.
+            int offset = 0;
+            int remaining = data.Length;
+            while (remaining > 0)
             {
-                _samples[_writeIndex] = data[i];
-                _writeIndex = (_writeIndex + 1) % (uint)_numberOfAudioSamples;
+                int chunk = Math.Min(remaining, _numberOfAudioSamples - (int)_writeIndex);
+                data.Slice(offset, chunk).CopyTo(_samples.AsSpan((int)_writeIndex, chunk));
+                _writeIndex = (uint)(((int)_writeIndex + chunk) % _numberOfAudioSamples);
+                offset += chunk;
+                remaining -= chunk;
             }
             _totalSamplesWritten += (ulong)data.Length;
         }
@@ -121,10 +128,17 @@ public sealed class MasterAudioBuffer
             {
                 ulong pendingSamples = targetSampleEnd - _analysisLastTotalSamplesWritten;
                 copyCount = (int)Math.Min((ulong)destination.Length, pendingSamples);
-                for (int i = 0; i < copyCount; i++)
+                // At most two wrap segments (the destination never exceeds the ring).
+                int copied = 0;
+                while (copied < copyCount)
                 {
-                    destination[i] = _samples[_analysisLastWriteIndex];
-                    _analysisLastWriteIndex = (_analysisLastWriteIndex + 1) % (uint)_numberOfAudioSamples;
+                    int chunk = Math.Min(copyCount - copied,
+                                         _numberOfAudioSamples - (int)_analysisLastWriteIndex);
+                    _samples.AsSpan((int)_analysisLastWriteIndex, chunk)
+                        .CopyTo(destination.Slice(copied, chunk));
+                    _analysisLastWriteIndex =
+                        (uint)(((int)_analysisLastWriteIndex + chunk) % _numberOfAudioSamples);
+                    copied += chunk;
                 }
                 _analysisLastTotalSamplesWritten += (ulong)copyCount;
             }

@@ -10,15 +10,30 @@ public sealed class SoundPrintFrameProjector
     private const int SoundPixelSize = 3;
     private const int SoundImagePublishIntervalMs = 100;
 
+    // Publish snapshots rotate through this fixed pool instead of allocating a
+    // fresh width*height*4-byte buffer (LOH-sized at the default 1019x654) per
+    // publish. A published buffer is overwritten again only after
+    // PublishBufferCount-1 newer publishes; the render scheduler's latest-wins
+    // delivery keeps the UI within one publish of the newest image, so on-screen
+    // reads never touch a buffer that is being recycled.
+    private const int PublishBufferCount = 3;
+
     private readonly PixelBuffer _soundImage;
+    private readonly PixelBuffer[] _publishBuffers = new PixelBuffer[PublishBufferCount];
+    private int _nextPublishBuffer;
     private readonly SoundImageRenderer _soundRenderer = new();
     private readonly Stopwatch _publishTimer = new();
     private bool _publishPending = true;
     private bool _hasBph;
+    private int _publishIntervalScale = 1;
 
     public SoundPrintFrameProjector(int sampleRate, int width, int height, uint backgroundColor)
     {
         _soundImage = new PixelBuffer(width, height);
+        for (int i = 0; i < PublishBufferCount; ++i)
+        {
+            _publishBuffers[i] = new PixelBuffer(width, height);
+        }
         var config = new SoundImageRenderer.Config
         {
             Bph = 0.0,
@@ -42,6 +57,24 @@ public sealed class SoundPrintFrameProjector
     public void ProcessSamples(ReadOnlySpan<float> block)
     {
         _soundRenderer.ProcessSamples(block);
+    }
+
+    /// <summary>
+    /// Deadline-degradation knob: disable/re-enable the live redraw of the
+    /// in-progress column. Analysis thread only.
+    /// </summary>
+    public void SetLivePreviewEnabled(bool enabled)
+    {
+        _soundRenderer.SetLivePreviewCurrentColumn(enabled);
+    }
+
+    /// <summary>
+    /// Deadline-degradation knob: stretch the publish interval by an integer
+    /// factor (1 = the default 100 ms cadence). Analysis thread only.
+    /// </summary>
+    public void SetPublishIntervalScale(int scale)
+    {
+        _publishIntervalScale = Math.Max(1, scale);
     }
 
     /// <summary>
@@ -92,9 +125,12 @@ public sealed class SoundPrintFrameProjector
         if (force ||
             _publishPending ||
             !_publishTimer.IsRunning ||
-            _publishTimer.ElapsedMilliseconds >= SoundImagePublishIntervalMs)
+            _publishTimer.ElapsedMilliseconds >= (long)SoundImagePublishIntervalMs * _publishIntervalScale)
         {
-            frame.SoundImage = _soundImage.Clone();
+            PixelBuffer snapshot = _publishBuffers[_nextPublishBuffer];
+            _nextPublishBuffer = (_nextPublishBuffer + 1) % PublishBufferCount;
+            Array.Copy(_soundImage.Pixels, snapshot.Pixels, snapshot.Pixels.Length);
+            frame.SoundImage = snapshot;
             frame.SoundImageUpdated = true;
             _publishPending = false;
             _publishTimer.Restart();
