@@ -10,6 +10,9 @@
 #   2. Marks the TimeGrapher.App launcher executable.
 #   3. Installs the taskbar icon and a desktop entry whose Exec/Icon point at THIS
 #      folder (no hardcoded paths), so the app shows up in the menu/taskbar.
+#   4. Writes a TimeGrapher.desktop launcher next to the binary and on the Desktop
+#      (replacing any existing one) — a Linux ELF has no embedded icon, so these
+#      give the file manager/desktop a branded double-clickable item.
 #
 # Re-runnable (idempotent). ICU (libicu) is intentionally NOT a dependency: the app
 # is built with InvariantGlobalization, so .NET does not require system ICU.
@@ -82,22 +85,50 @@ else
   echo "==> $ICON_SRC not found; desktop entry will have no icon."
 fi
 
-# Generate the desktop entry fresh so Exec/Icon point at the real install location
-# (no hardcoded paths). The filename must equal the app-id (StartupWMClass) so the
+# Generate every desktop entry fresh so Exec/Icon point at the real install
+# location (no hardcoded paths).
+write_desktop_entry() {
+  {
+    echo "[Desktop Entry]"
+    echo "Type=Application"
+    echo "Name=TimeGrapher"
+    # Quote Exec per the Desktop Entry spec so an install path with spaces still launches.
+    printf 'Exec="%s"\n' "$LAUNCHER"
+    if [ -n "$ICON_DEST" ]; then echo "Icon=$ICON_DEST"; fi
+    echo "StartupWMClass=$APP_NAME"
+    echo "Categories=Utility;"
+  } > "$1"
+}
+
+# Menu/taskbar entry. The filename must equal the app-id (StartupWMClass) so the
 # Pi panel matches the running window to this entry's icon.
 DESKTOP_DEST="$APPS_DIR/$APP_NAME.desktop"
 echo "==> Writing desktop entry -> $DESKTOP_DEST"
-{
-  echo "[Desktop Entry]"
-  echo "Type=Application"
-  echo "Name=TimeGrapher"
-  # Quote Exec per the Desktop Entry spec so an install path with spaces still launches.
-  printf 'Exec="%s"\n' "$LAUNCHER"
-  if [ -n "$ICON_DEST" ]; then echo "Icon=$ICON_DEST"; fi
-  echo "StartupWMClass=$APP_NAME"
-  echo "Categories=Utility;"
-} > "$DESKTOP_DEST"
+write_desktop_entry "$DESKTOP_DEST"
 chmod 644 "$DESKTOP_DEST"
+
+# Folder launcher next to the binary: a Linux ELF has no embedded icon (unlike a
+# Windows .exe), so the file manager shows the raw binary with a generic icon.
+# This launcher is the branded double-clickable item; +x so pcmanfm treats it as
+# a trusted launcher.
+FOLDER_LAUNCHER="$SCRIPT_DIR/TimeGrapher.desktop"
+echo "==> Writing folder launcher -> $FOLDER_LAUNCHER"
+rm -f "$FOLDER_LAUNCHER"
+write_desktop_entry "$FOLDER_LAUNCHER"
+chmod 755 "$FOLDER_LAUNCHER"
+
+# Desktop shortcut, replacing any existing one. xdg-user-dir falls back to $HOME
+# when no DESKTOP dir is configured (e.g. headless) — skip rather than litter $HOME.
+DESKTOP_DIR="$(xdg-user-dir DESKTOP 2>/dev/null || echo "$HOME/Desktop")"
+if [ -d "$DESKTOP_DIR" ] && [ "$DESKTOP_DIR" != "$HOME" ]; then
+  SHORTCUT_DEST="$DESKTOP_DIR/TimeGrapher.desktop"
+  echo "==> Writing desktop shortcut -> $SHORTCUT_DEST"
+  rm -f "$SHORTCUT_DEST"
+  write_desktop_entry "$SHORTCUT_DEST"
+  chmod 755 "$SHORTCUT_DEST"
+else
+  echo "==> No desktop folder ($DESKTOP_DIR); skipping the desktop shortcut."
+fi
 
 # Best-effort cache refresh so the entry/icon appear without a re-login.
 if command -v update-desktop-database >/dev/null 2>&1; then
