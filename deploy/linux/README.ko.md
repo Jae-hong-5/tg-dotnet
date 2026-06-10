@@ -8,7 +8,8 @@
 ## 1. 빠른 설치 (권장)
 
 압축을 풀고 `install.sh`를 한 번 실행하면 의존성 설치 + 실행 권한 + 아이콘/데스크톱
-엔트리 등록까지 끝난다. 데스크톱 엔트리의 `Exec`/`Icon` 경로는 **푼 위치로 자동 설정**된다.
+엔트리 등록에 더해, 푼 폴더와 바탕화면에 `TimeGrapher.desktop` 런처가 생성된다(기존
+숏컷은 교체). 모든 엔트리의 `Exec`/`Icon` 경로는 **푼 위치로 자동 설정**된다.
 
 ```bash
 mkdir -p ~/timegrapher
@@ -20,6 +21,9 @@ cd ~/timegrapher
 
 - `install.sh`는 멱등(재실행 가능). 의존성은 `apt-get`이 있을 때만 설치하고, root가
   아니면 `sudo`를 쓴다.
+- 파일 관리자에서 `TimeGrapher.App` 바이너리 자체는 기본 아이콘으로 보이는 게 정상이다
+  — Linux ELF는 Windows .exe처럼 아이콘을 내장할 수 없다. 더블클릭 실행은 생성된
+  `TimeGrapher.desktop` 런처(또는 바탕화면 숏컷)를 쓰면 된다.
 - 헤드리스/SSH 점검: `./TimeGrapher.App --smoke` (GUI 없이 자가점검, 성공 시 종료코드 0).
 
 self-contained 빌드라 **.NET 런타임은 설치할 필요 없다.** 아래 2·3번은 `install.sh`가
